@@ -8,6 +8,10 @@ license = "MIT"
 [dependencies]
 zip = { version = "2", default-features = false, features = ["deflate"] }
 
+# Embed the app icon into the portable launcher exe (Explorer shows this one).
+[target.'cfg(windows)'.build-dependencies]
+tauri-winres = "0.3"
+
 [profile.release]
 lto = true
 codegen-units = 1

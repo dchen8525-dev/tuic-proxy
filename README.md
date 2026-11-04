@@ -101,12 +101,14 @@ IPv6 服务端写成 `--server '[2001:db8::1]'`（可带 `:端口`）即可，�
 
 | 平台 | 发布物 | 说明 |
 | --- | --- | --- |
-| Windows 10/11 | `tuic-proxy-client-gui-<版本>-windows-x64.exe` | 单个 exe，内含 GUI + sidecar |
+| Windows 10/11 | `tuic-proxy-client-gui-<版本>-windows-amd64.exe` | 单个 exe，内含 GUI + sidecar |
 | Linux x86_64 | `tuic-proxy-client-gui-<版本>-linux-amd64.AppImage` | 单个 AppImage，内含 GUI、sidecar 与 WebKitGTK 依赖 |
 
 - Windows 首次运行把 `tuic-proxy-client-gui.exe` + `tuic-proxy-client.exe` 解到
   `%LOCALAPPDATA%\TUICProxy\bin\<哈希>\`；Linux AppImage 直接挂载运行，不写系统目录；
 - 界面提供连接参数（服务端、PSK、本地 SOCKS5 端口）、启动/停止、运行状态与日志；
+- “链路测试”页经本地 SOCKS5 访问 Cloudflare 测速端点，显示延迟/抖动、下载/上传
+  速率，并汇总 QUIC 路径统计给出隧道丢包率与平均 RTT；
 - 配置存在 WebView 的 localStorage，升级不丢；
 - 关窗或异常退出时一并结束 sidecar（Windows 用 Job Object，Linux 用 SIGTERM），
   不残留占用端口。
@@ -203,7 +205,7 @@ tag 即触发整条流水线，并行构建三类发布物：
 | --- | --- |
 | `tuic-proxy-server-<版本>-linux-<架构>.deb` | 服务端 + 命令行客户端 + systemd 单元（Ubuntu 22.04 构建） |
 | `tuic-proxy-client-gui-<版本>-linux-<架构>.AppImage` | Linux GUI，免安装 |
-| `tuic-proxy-client-gui-<版本>-windows-x64.exe` | Windows GUI，单文件 |
+| `tuic-proxy-client-gui-<版本>-windows-amd64.exe` | Windows GUI，单文件 |
 
 deb 任务同时跑 `cargo test` 门禁，并做 `dpkg -i`、版本/文件/conffile 校验、systemd
 起停与卸载冒烟。全部通过后创建 GitHub Release，附上三个产物与 `SHA256SUMS`。tag

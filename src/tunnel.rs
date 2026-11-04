@@ -99,13 +99,13 @@ impl Tunnel {
 
         tracing::info!(server = %self.server, slot = index, "QUIC tunnel established");
         *guard = Some(connection.clone());
-        spawn_stats(connection.clone());
+        spawn_stats(connection.clone(), index);
         Ok(connection)
     }
 }
 
 /// Periodically log QUIC path statistics when debug logging is enabled.
-fn spawn_stats(connection: Connection) {
+fn spawn_stats(connection: Connection, slot: usize) {
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(2));
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -116,6 +116,7 @@ fn spawn_stats(connection: Connection) {
             }
             let stats = connection.stats();
             tracing::debug!(
+                slot,
                 rtt_ms = stats.path.rtt.as_millis() as u64,
                 cwnd = stats.path.cwnd,
                 sent_packets = stats.path.sent_packets,

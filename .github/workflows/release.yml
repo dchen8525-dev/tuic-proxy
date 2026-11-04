@@ -6,7 +6,7 @@ name: release
 # Release:
 #   * tuic-proxy-server-<ver>-linux-<arch>.deb     server + CLI client, systemd unit
 #   * tuic-proxy-client-gui-<ver>-linux-<arch>.AppImage   Linux GUI, no install
-#   * tuic-proxy-client-gui-<ver>-windows-x64.exe         Windows GUI, single file
+#   * tuic-proxy-client-gui-<ver>-windows-amd64.exe         Windows GUI, single file
 #
 # The Linux .deb job also runs the test suite and verifies that the package
 # installs and the service starts.

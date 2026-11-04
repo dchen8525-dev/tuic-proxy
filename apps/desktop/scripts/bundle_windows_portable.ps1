@@ -89,7 +89,7 @@ try {
   $hash.CopyTo($footer, 32)
 
   # 4) concatenate: launcher + payload + footer
-  $out = Join-Path $OutDir "tuic-proxy-client-gui-$Version-windows-x64.exe"
+  $out = Join-Path $OutDir "tuic-proxy-client-gui-$Version-windows-amd64.exe"
   $fs = [System.IO.File]::Create($out)
   try {
     foreach ($part in @($launcher, $payload)) {

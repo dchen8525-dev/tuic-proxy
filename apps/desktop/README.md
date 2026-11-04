@@ -16,16 +16,20 @@ apps/desktop/
 │   ├── build_windows.ps1       # sidecar 准备 → tauri build → 单文件 exe
 │   ├── prepare_sidecar.ps1     # 把 tuic-proxy-client.exe 放进 binaries/
 │   ├── prepare_sidecar.sh      # 同上，Linux
+│   ├── make_icons.py           # 生成应用图标（白 T + 右下白点）
 │   └── bundle_windows_portable.ps1  # 引导器 + zip 载荷 + 尾部 → 单文件 exe
 └── icons/                      # 应用图标
 ```
 
 ## 界面
 
-左栏三个页面：
+左栏四个页面：
 
 - **连接**：服务端地址/端口、预共享密钥、本地 SOCKS5 地址/端口。
 - **状态**：运行状态、SOCKS5 入口、服务端。
+- **链路测试**：经本地 SOCKS5 访问 Cloudflare 测速端点，显示延迟、抖动、下载/
+  上传速率和请求失败数；同时汇总 sidecar 的 QUIC 路径统计，显示隧道丢包率、
+  平均 RTT、拥塞事件与连接数。
 - **日志**：sidecar 的 stdout/stderr 逐行显示，带行数统计与清空。
 
 启动 sidecar 时只传 `--server`、`--socks` 与 `--psk=<密钥>`，其余用默认值。
@@ -43,12 +47,12 @@ powershell -File apps/desktop/scripts/build_windows.ps1 `
   -ClientBin target\release\tuic-proxy-client.exe
 ```
 
-产物：`dist/tuic-proxy-client-gui-<版本>-windows-x64.exe`。首次双击时引导器把
+产物：`dist/tuic-proxy-client-gui-<版本>-windows-amd64.exe`。首次双击时引导器把
 `tuic-proxy-client-gui.exe` + `tuic-proxy-client.exe` 解到
 `%LOCALAPPDATA%\TUICProxy\bin\<载荷哈希>\`，之后直接启动缓存；换新版本按内容
 哈希分目录，旧目录 7 天未用后清理。不写系统目录、不建卸载项、不需要管理员权限。
 
-排障：`tuic-proxy-client-gui-<版本>-windows-x64.exe --tuic-proxy-launcher-selftest`
+排障：`tuic-proxy-client-gui-<版本>-windows-amd64.exe --tuic-proxy-launcher-selftest`
 （写 `%LOCALAPPDATA%\TUICProxy\tuic-proxy-launcher-selftest.txt`）；失败日志在
 `%LOCALAPPDATA%\TUICProxy\launcher.log`。
 
