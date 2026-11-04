@@ -1014,13 +1014,14 @@ dependencies = [
 
 [[package]]
 name = "tuic-proxy"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "clap",
  "hkdf",
  "hmac",
  "quinn",
+ "quinn-proto",
  "rand 0.8.8",
  "rcgen",
  "rustls",

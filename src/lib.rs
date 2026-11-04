@@ -15,6 +15,7 @@
 pub mod auth;
 pub mod cli;
 pub mod client;
+pub mod congestion;
 pub mod relay;
 pub mod server;
 pub mod socks5;

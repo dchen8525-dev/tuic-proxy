@@ -35,6 +35,8 @@
   无需为每个请求重复握手。
 - **连接池**：流按轮询分散到多条 QUIC 连接（默认 4 条）。单条 QUIC 连接只有一个
   拥塞窗口，高 RTT 链路上会成为瓶颈；多条连接各有独立窗口，并发时能叠加带宽。
+- **抗丢包拥塞控制**：可选 `bbr` / `loss-tolerant`，丢包严重的线路上单流吞吐从
+  十几 KB/s 提升到 MB/s 级（见[丢包严重的线路](#丢包严重的线路--congestion-loss-tolerant)）。
 - **服务端 DNS**：客户端把域名原样发给服务端解析，避免本地 DNS 泄露。
 - **安全默认值**：默认拒绝回环、私网、链路本地地址，避免服务端被当作内网跳板。
 - **图形客户端**：Windows 单文件 `.exe` 与 Linux AppImage，双击运行、免安装；配置保存在本机。
@@ -89,10 +91,36 @@ IPv6 服务端写成 `--server '[2001:db8::1]'`（可带 `:端口`）即可，�
 | server | `--allow-private` | 允许访问私网/回环目标（测试或内网穿透时需要） |
 | client | `--server HOST[:PORT]` | **必填**。服务端地址，端口默认 4433 |
 | client | `--socks ADDR\|PORT` | SOCKS5 监听，默认 `127.0.0.1:1080` |
+| 两者 | `--congestion MODE` | QUIC 拥塞控制：`cubic`（默认）、`bbr`、`loss-tolerant`，见下文 |
 
 其余行为使用固定默认值：每条 QUIC 连接最多 1024 条流、空闲超时 60 秒、客户端使用
 4 条 QUIC 连接的连接池、优先 IPv4。日志级别用 `RUST_LOG` 控制（默认 `info`），例如
 `RUST_LOG=tuic_proxy=debug` 会输出 QUIC 路径统计。
+
+### 丢包严重的线路：`--congestion loss-tolerant`
+
+QUIC 默认的 CUBIC 把每个 UDP 丢包都当成拥塞，窗口直接减半。国际线路晚高峰常见
+10% 左右的 UDP 丢包，这种情况下单流下载会塌到十几 KB/s（TCP 同时刻仍有 300+ KB/s）。
+
+`loss-tolerant` 使用 BBR 测量带宽，并且**不让普通丢包缩小发送窗口**（仍会重传，
+只有整条链路静默一个 RTT 以上的“持续拥塞”才收缩）。下行方向由服务端发送，所以
+**关键是服务端打开**：
+
+```console
+./tuic-proxy-server --psk @/etc/tuic-proxy/psk --congestion loss-tolerant
+```
+
+客户端默认不需要改动；带宽受限的上传方向也可以加同样的参数。两端各自独立选择，
+旧版本客户端/服务端可以与新版本混用（默认仍是 `cubic`）。
+
+| 同一线路实测（服务端 `loss-tolerant`） | 之前（cubic） | 之后 |
+| --- | --- | --- |
+| 单流下载（Cloudflare / claude.exe） | ~18 KB/s | **1.0–1.2 MB/s** |
+| 4 路并发下载合计 | ~60 KB/s | **4.2 MB/s** |
+| 上传（客户端 `bbr`） | — | ~1 MB/s |
+
+在 systemd 的 `.deb` 部署中，控制器写在 `/etc/tuic-proxy/server.env` 的
+`PSK_ARGS` 里：`PSK_ARGS=--psk @/etc/tuic-proxy/psk --congestion loss-tolerant`。
 
 ## 桌面 GUI 客户端
 
@@ -229,6 +257,7 @@ src/
   socks5.rs    SOCKS5 协商、请求解析
   relay.rs     TCP <-> QUIC 流双向转发
   tunnel.rs    客户端连接池、按需重连
+  congestion.rs 拥塞控制选择（cubic / bbr / loss-tolerant）
   client.rs    客户端启动、SOCKS5 accept loop、服务端地址解析
   server.rs    服务端启动、认证、DNS、出站连接
   bin/         tuic-proxy-server / tuic-proxy-client

@@ -13,6 +13,7 @@ use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
 use crate::auth::{self, Psk};
+use crate::congestion::Congestion;
 use crate::target::{is_blocked_ip, Target};
 use crate::{status, tls};
 
@@ -28,6 +29,8 @@ pub struct ServerOptions {
     pub max_streams: u32,
     pub idle_timeout: Duration,
     pub prefer_ipv4: bool,
+    /// Congestion controller for the QUIC listener.
+    pub congestion: Congestion,
 }
 
 pub struct ServerHandle {
@@ -64,7 +67,11 @@ pub async fn start(options: ServerOptions) -> Result<ServerHandle> {
     tls::install_crypto_provider();
 
     let psk = Arc::new(Psk::new(&options.psk)?);
-    let config = tls::server_config(options.max_streams, options.idle_timeout)?;
+    let config = tls::server_config(
+        options.max_streams,
+        options.idle_timeout,
+        options.congestion,
+    )?;
     let endpoint = Endpoint::server(config, options.listen)
         .with_context(|| format!("cannot bind QUIC to {}", options.listen))?;
     let addr = endpoint

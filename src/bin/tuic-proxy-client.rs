@@ -5,6 +5,7 @@ use anyhow::Result;
 use clap::Parser;
 use tracing_subscriber::EnvFilter;
 use tuic_proxy::client::{self, ClientOptions};
+use tuic_proxy::congestion::Congestion;
 use tuic_proxy::{DEFAULT_CONNECTIONS, DEFAULT_IDLE_TIMEOUT_SECS, DEFAULT_MAX_STREAMS};
 
 #[derive(Debug, Parser)]
@@ -26,6 +27,12 @@ struct Args {
     /// SOCKS5 listen address, or just a port (binds 127.0.0.1).
     #[arg(long, default_value = "127.0.0.1:1080", value_name = "ADDR|PORT", value_parser = parse_listen)]
     socks: SocketAddr,
+
+    /// QUIC congestion controller: `cubic` (default), `bbr`, or
+    /// `loss-tolerant` (BBR whose window does not collapse on packet loss).
+    /// Use a loss-tolerant mode on paths that drop a steady share of UDP.
+    #[arg(long, default_value = "cubic", value_parser = Congestion::clap_parse)]
+    congestion: Congestion,
 }
 
 /// Accept either `ADDR:PORT` or a bare `PORT` (meaning `127.0.0.1:PORT`).
@@ -58,8 +65,10 @@ async fn main() -> Result<()> {
         idle_timeout: Duration::from_secs(DEFAULT_IDLE_TIMEOUT_SECS),
         prefer_ipv4: true,
         connections: DEFAULT_CONNECTIONS,
+        congestion: args.congestion,
     })
     .await?;
+    tracing::info!(congestion = %args.congestion, "congestion controller selected");
 
     println!(
         "tuic-proxy-client SOCKS5 listening on {}",
@@ -83,6 +92,27 @@ mod tests {
         // Both binaries live in one package, so clap would otherwise fall back
         // to the package name (tuic-proxy).
         assert_eq!(Args::command().get_name(), "tuic-proxy-client");
+    }
+
+    #[test]
+    fn congestion_flag_parses_the_supported_modes() {
+        assert_eq!(Congestion::clap_parse("cubic"), Ok(Congestion::Cubic));
+        assert_eq!(Congestion::clap_parse("bbr"), Ok(Congestion::Bbr));
+        assert_eq!(
+            Congestion::clap_parse("loss-tolerant"),
+            Ok(Congestion::LossTolerant)
+        );
+        assert!(Congestion::clap_parse("vegas").is_err());
+        // The default keeps CUBIC.
+        let args = Args::try_parse_from([
+            "tuic-proxy-client",
+            "--server",
+            "203.0.113.1",
+            "--psk",
+            "0123456789abcdef",
+        ])
+        .expect("valid arguments");
+        assert_eq!(args.congestion, Congestion::Cubic);
     }
 
     #[test]

@@ -10,6 +10,7 @@ use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
 use crate::auth::Psk;
+use crate::congestion::Congestion;
 use crate::socks5;
 use crate::tls;
 use crate::tunnel::Tunnel;
@@ -28,6 +29,8 @@ pub struct ClientOptions {
     pub prefer_ipv4: bool,
     /// Number of QUIC connections the streams are spread over.
     pub connections: usize,
+    /// Congestion controller for the QUIC connections.
+    pub congestion: Congestion,
 }
 
 pub struct ClientHandle {
@@ -59,7 +62,11 @@ pub async fn start(options: ClientOptions) -> Result<ClientHandle> {
     tls::install_crypto_provider();
 
     let psk = Arc::new(Psk::new(&options.psk)?);
-    let config = tls::client_config(options.max_streams, options.idle_timeout)?;
+    let config = tls::client_config(
+        options.max_streams,
+        options.idle_timeout,
+        options.congestion,
+    )?;
 
     let (server, server_name) = resolve_server(&options.server, options.prefer_ipv4).await?;
 

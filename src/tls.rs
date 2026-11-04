@@ -13,6 +13,8 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use quinn::crypto::rustls::{QuicClientConfig, QuicServerConfig};
+
+use crate::congestion::Congestion;
 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer, ServerName, UnixTime};
 use rustls::{DigitallySignedStruct, SignatureScheme};
@@ -28,7 +30,11 @@ pub fn install_crypto_provider() {
 }
 
 /// Build the server-side QUIC configuration with an ephemeral self-signed certificate.
-pub fn server_config(max_streams: u32, idle_timeout: Duration) -> Result<quinn::ServerConfig> {
+pub fn server_config(
+    max_streams: u32,
+    idle_timeout: Duration,
+    congestion: Congestion,
+) -> Result<quinn::ServerConfig> {
     let certified = rcgen::generate_simple_self_signed(vec!["tuic-proxy".to_owned()])?;
     let cert = CertificateDer::from(certified.cert.der().to_vec());
     let key = PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(certified.key_pair.serialize_der()));
@@ -39,12 +45,16 @@ pub fn server_config(max_streams: u32, idle_timeout: Duration) -> Result<quinn::
     tls.alpn_protocols = vec![ALPN.to_vec()];
 
     let mut config = quinn::ServerConfig::with_crypto(Arc::new(QuicServerConfig::try_from(tls)?));
-    config.transport_config(Arc::new(transport(max_streams, idle_timeout)?));
+    config.transport_config(Arc::new(transport(max_streams, idle_timeout, congestion)?));
     Ok(config)
 }
 
 /// Build the client-side QUIC configuration.
-pub fn client_config(max_streams: u32, idle_timeout: Duration) -> Result<quinn::ClientConfig> {
+pub fn client_config(
+    max_streams: u32,
+    idle_timeout: Duration,
+    congestion: Congestion,
+) -> Result<quinn::ClientConfig> {
     let provider = Arc::new(rustls::crypto::ring::default_provider());
     let mut tls = rustls::ClientConfig::builder_with_provider(provider.clone())
         .with_safe_default_protocol_versions()?
@@ -54,11 +64,15 @@ pub fn client_config(max_streams: u32, idle_timeout: Duration) -> Result<quinn::
     tls.alpn_protocols = vec![ALPN.to_vec()];
 
     let mut config = quinn::ClientConfig::new(Arc::new(QuicClientConfig::try_from(tls)?));
-    config.transport_config(Arc::new(transport(max_streams, idle_timeout)?));
+    config.transport_config(Arc::new(transport(max_streams, idle_timeout, congestion)?));
     Ok(config)
 }
 
-fn transport(max_streams: u32, idle_timeout: Duration) -> Result<quinn::TransportConfig> {
+fn transport(
+    max_streams: u32,
+    idle_timeout: Duration,
+    congestion: Congestion,
+) -> Result<quinn::TransportConfig> {
     let mut transport = quinn::TransportConfig::default();
     transport.max_concurrent_bidi_streams(max_streams.into());
     transport.max_concurrent_uni_streams(16u32.into());
@@ -68,6 +82,9 @@ fn transport(max_streams: u32, idle_timeout: Duration) -> Result<quinn::Transpor
             .try_into()
             .map_err(|_| anyhow!("idle timeout is out of range"))?,
     ));
+    if congestion != Congestion::Cubic {
+        transport.congestion_controller_factory(congestion.factory());
+    }
     Ok(transport)
 }
 

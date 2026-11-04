@@ -8,6 +8,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 use tuic_proxy::client::{self, ClientHandle, ClientOptions};
+use tuic_proxy::congestion::Congestion;
 use tuic_proxy::server::{self, ServerHandle, ServerOptions};
 
 const PSK: &str = "test-psk-0123456789abcdef0123456789abcdef";
@@ -36,6 +37,7 @@ async fn start_proxy(psk: &str) -> Proxy {
         max_streams: 1024,
         idle_timeout: Duration::from_secs(30),
         prefer_ipv4: true,
+        congestion: Congestion::default(),
     })
     .await
     .expect("start server");
@@ -49,6 +51,7 @@ async fn start_proxy(psk: &str) -> Proxy {
         idle_timeout: Duration::from_secs(30),
         prefer_ipv4: true,
         connections: 1,
+        congestion: Congestion::default(),
     })
     .await
     .expect("start client");
@@ -221,6 +224,7 @@ async fn streams_are_spread_over_the_connection_pool() {
         max_streams: 64,
         idle_timeout: Duration::from_secs(30),
         prefer_ipv4: true,
+        congestion: Congestion::default(),
     })
     .await
     .expect("start server");
@@ -233,6 +237,7 @@ async fn streams_are_spread_over_the_connection_pool() {
         idle_timeout: Duration::from_secs(30),
         prefer_ipv4: true,
         connections: 2,
+        congestion: Congestion::default(),
     })
     .await
     .expect("start client");
@@ -293,6 +298,61 @@ async fn large_payload_is_relayed_intact() {
     proxy.shutdown().await;
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn loss_tolerant_controller_relays_a_large_payload() {
+    let (echo_addr, _echo) = start_echo().await;
+    let server = server::start(ServerOptions {
+        listen: "127.0.0.1:0".parse().expect("server addr"),
+        psk: PSK.to_owned(),
+        allow_private: true,
+        max_streams: 1024,
+        idle_timeout: Duration::from_secs(30),
+        prefer_ipv4: true,
+        congestion: Congestion::LossTolerant,
+    })
+    .await
+    .expect("start server");
+    let client = client::start(ClientOptions {
+        server: server.addr().to_string(),
+        socks_listen: "127.0.0.1:0".parse().expect("socks addr"),
+        bind: "127.0.0.1:0".parse().expect("bind addr"),
+        psk: PSK.to_owned(),
+        max_streams: 1024,
+        idle_timeout: Duration::from_secs(30),
+        prefer_ipv4: true,
+        connections: 1,
+        congestion: Congestion::LossTolerant,
+    })
+    .await
+    .expect("start client");
+
+    let (tcp, reply) = socks_connect(
+        client.socks_addr(),
+        &echo_addr.ip().to_string(),
+        echo_addr.port(),
+    )
+    .await
+    .expect("SOCKS connect");
+    assert_eq!(reply, 0x00);
+    let payload: Vec<u8> = (0..1024 * 1024).map(|index| (index % 253) as u8).collect();
+    let (mut reader, mut writer) = tcp.into_split();
+    let outgoing = payload.clone();
+    let writer_task = tokio::spawn(async move {
+        writer.write_all(&outgoing).await.expect("write payload");
+        writer.shutdown().await.expect("finish payload");
+    });
+    let mut received = vec![0u8; payload.len()];
+    timeout(Duration::from_secs(30), reader.read_exact(&mut received))
+        .await
+        .expect("transfer timed out")
+        .expect("read echo");
+    writer_task.await.expect("writer task");
+    assert_eq!(received, payload);
+
+    client.shutdown().await;
+    server.shutdown().await;
+}
+
 #[tokio::test]
 async fn wrong_psk_is_rejected() {
     let (echo_addr, _echo) = start_echo().await;
@@ -303,6 +363,7 @@ async fn wrong_psk_is_rejected() {
         max_streams: 64,
         idle_timeout: Duration::from_secs(10),
         prefer_ipv4: true,
+        congestion: Congestion::default(),
     })
     .await
     .expect("start server");
@@ -315,6 +376,7 @@ async fn wrong_psk_is_rejected() {
         idle_timeout: Duration::from_secs(10),
         prefer_ipv4: true,
         connections: 1,
+        congestion: Congestion::default(),
     })
     .await
     .expect("start client");

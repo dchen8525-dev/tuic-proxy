@@ -1,7 +1,7 @@
 {
   "name": "tuic-proxy-desktop",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "PSK QUIC 代理客户端（Tauri 2 壳 + tuic-proxy-client sidecar）",
   "scripts": {
     "tauri": "tauri",

@@ -1,6 +1,6 @@
 [package]
 name = "tuic-proxy"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 rust-version = "1.85"
 description = "QUIC proxy with PSK authentication, SOCKS5 inbound and native stream multiplexing"
@@ -24,6 +24,11 @@ clap = { version = "4", features = ["derive"] }
 hkdf = "0.12"
 hmac = "0.12"
 quinn = { version = "0.11", default-features = false, features = ["runtime-tokio", "rustls-ring", "log"] }
+# Only for the `RttEstimator` type in custom congestion controllers: quinn
+# re-exports `congestion::Controller` but not its RTT parameter type.  This
+# must resolve to the SAME quinn-proto version quinn itself uses (Cargo.lock
+# pins it); two copies in the tree would make the types incompatible.
+quinn-proto = { version = "0.11", default-features = false }
 rand = "0.8"
 rcgen = { version = "0.13", default-features = false, features = ["crypto", "ring", "pem"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }

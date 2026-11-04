@@ -4,6 +4,7 @@ use std::time::Duration;
 use anyhow::Result;
 use clap::Parser;
 use tracing_subscriber::EnvFilter;
+use tuic_proxy::congestion::Congestion;
 use tuic_proxy::server::{self, ServerOptions};
 use tuic_proxy::{DEFAULT_IDLE_TIMEOUT_SECS, DEFAULT_MAX_STREAMS};
 
@@ -26,6 +27,12 @@ struct Args {
     /// Allow proxying to loopback/private/link-local targets.
     #[arg(long)]
     allow_private: bool,
+
+    /// QUIC congestion controller: `cubic` (default), `bbr`, or
+    /// `loss-tolerant` (BBR whose window does not collapse on packet loss).
+    /// Use a loss-tolerant mode on paths that drop a steady share of UDP.
+    #[arg(long, default_value = "cubic", value_parser = Congestion::clap_parse)]
+    congestion: Congestion,
 }
 
 #[tokio::main]
@@ -45,8 +52,10 @@ async fn main() -> Result<()> {
         max_streams: DEFAULT_MAX_STREAMS,
         idle_timeout: Duration::from_secs(DEFAULT_IDLE_TIMEOUT_SECS),
         prefer_ipv4: true,
+        congestion: args.congestion,
     })
     .await?;
+    tracing::info!(congestion = %args.congestion, "congestion controller selected");
 
     println!("tuic-proxy-server listening on {}", handle.addr());
     tokio::select! {
@@ -61,6 +70,22 @@ async fn main() -> Result<()> {
 mod tests {
     use super::*;
     use clap::CommandFactory;
+
+    #[test]
+    fn congestion_flag_defaults_to_cubic() {
+        let args = Args::try_parse_from(["tuic-proxy-server", "--psk", "0123456789abcdef"])
+            .expect("valid arguments");
+        assert_eq!(args.congestion, Congestion::Cubic);
+        let args = Args::try_parse_from([
+            "tuic-proxy-server",
+            "--psk",
+            "0123456789abcdef",
+            "--congestion",
+            "loss-tolerant",
+        ])
+        .expect("valid arguments");
+        assert_eq!(args.congestion, Congestion::LossTolerant);
+    }
 
     #[test]
     fn version_reports_the_binary_name() {

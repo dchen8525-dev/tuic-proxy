@@ -1,6 +1,6 @@
 [package]
 name = "tuic-proxy-launcher"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 description = "TUIC 代理单文件引导器"
 license = "MIT"
