@@ -1,0 +1,19 @@
+[package]
+name = "psk-desktop"
+version = "0.1.0"
+edition = "2021"
+description = "PSK QUIC 代理客户端（Tauri 2 壳；代理由 psk-client sidecar 承载）"
+license = "MIT"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

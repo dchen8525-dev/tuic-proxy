@@ -1,0 +1,39 @@
+#!/bin/sh
+# psk-quic-proxy post-install: create the service user and reload systemd.
+# It does NOT start the service: the package ships no PSK, so configure
+# /etc/psk-quic-proxy/server.env first.
+set -e
+
+if [ "$1" = "configure" ]; then
+  # Dedicated unprivileged user for the server.
+  if ! getent passwd pskproxy >/dev/null 2>&1; then
+    useradd --system --no-create-home --shell /usr/sbin/nologin pskproxy || true
+  fi
+
+  install -d -m 0755 /etc/psk-quic-proxy
+
+  # server.env may hold the PSK; the service reads it through systemd
+  # (EnvironmentFile is parsed by PID 1 as root), so keep it 0600.
+  if [ -e /etc/psk-quic-proxy/server.env ]; then
+    chmod 0600 /etc/psk-quic-proxy/server.env || true
+  fi
+
+  if [ -d /run/systemd/system ] && [ -x /bin/systemctl ]; then
+    systemctl --system daemon-reload >/dev/null 2>&1 || true
+  fi
+
+  # $2 is the previously installed version: empty on first install.
+  if [ -z "$2" ]; then
+    cat <<'EOF'
+
+psk-quic-proxy installed. Next steps:
+  1. edit /etc/psk-quic-proxy/server.env and set PSK_ARGS (at least --psk <key>)
+  2. systemctl enable --now psk-quic-proxy
+  3. journalctl -u psk-quic-proxy -f
+
+The client binary is /usr/bin/psk-client.
+EOF
+  fi
+fi
+
+exit 0

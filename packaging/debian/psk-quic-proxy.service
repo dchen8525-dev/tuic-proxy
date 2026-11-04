@@ -1,0 +1,37 @@
+[Unit]
+Description=PSK QUIC proxy server
+Documentation=file:///usr/share/doc/psk-quic-proxy/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# The service never needs privileges: it only does UDP and outbound TCP.
+User=pskproxy
+Group=pskproxy
+
+# Startup arguments come from /etc/psk-quic-proxy/server.env (a dpkg conffile).
+# The unit does not start on install: without PSK_ARGS the server exits with
+# "the following required arguments were not provided: --psk".
+# Note: $PSK_ARGS is split at whitespace by systemd, so it can carry several
+# arguments such as `--psk @/etc/psk-quic-proxy/psk --allow-private`.
+EnvironmentFile=-/etc/psk-quic-proxy/server.env
+ExecStart=/usr/bin/psk-server $PSK_ARGS
+
+Restart=on-failure
+RestartSec=3
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=full
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+LimitNOFILE=65536
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

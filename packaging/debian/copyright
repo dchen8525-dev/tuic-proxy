@@ -1,0 +1,9 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: psk-quic-proxy
+Source: https://github.com/dchen8525-dev/tuic-proxy
+
+Files: *
+Copyright: 2026 psk-quic-proxy contributors
+License: TODO - the repository does not declare a license yet. Add a LICENSE
+ file at the repository root and replace this paragraph with the actual terms
+ before distributing this package outside your own organization.

@@ -1,0 +1,215 @@
+name: release
+
+# Publishing is tag-driven: `git tag v0.1.0 && git push origin v0.1.0`.
+#
+# The workflow builds the .deb on Linux, runs the test suite as a gate, verifies
+# that the package installs and the service starts, and attaches the artifact
+# to a GitHub Release.
+#
+# Manual runs (workflow_dispatch) only produce artifacts unless `tag` +
+# `publish=true` are given.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish (e.g. v0.1.0). Leave empty to only build artifacts."
+        required: false
+        type: string
+      publish:
+        description: "Create a GitHub Release (requires tag)"
+        required: false
+        type: boolean
+        default: false
+
+# Never let two runs upload to the same Release at once.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  # The version lives in Cargo.toml [package].version. The tag must match it,
+  # otherwise a v0.1.1 tag could silently ship a 0.1.0 package.
+  prep:
+    name: Resolve version and tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      tag: ${{ steps.resolve.outputs.tag }}
+      publish: ${{ steps.resolve.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve version
+        id: resolve
+        env:
+          DISPATCH_TAG: ${{ inputs.tag }}
+          DISPATCH_PUBLISH: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+          file_version="$(python3 - <<'PY'
+          import re
+          text = open("Cargo.toml", encoding="utf-8").read()
+          m = re.search(r'(?ms)^\[package\].*?^version\s*=\s*"([^"]+)"', text)
+          assert m, "Cargo.toml [package] has no version"
+          print(m.group(1))
+          PY
+          )"
+
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            tag="${GITHUB_REF_NAME}"
+            publish=true
+          else
+            tag="${DISPATCH_TAG:-}"
+            publish="${DISPATCH_PUBLISH:-false}"
+          fi
+
+          if [ -n "$tag" ]; then
+            if ! printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+              echo "::error::tag '$tag' must look like v0.1.0"
+              exit 1
+            fi
+            version="${tag#v}"
+            if [ "$version" != "$file_version" ]; then
+              echo "::error::Cargo.toml version is $file_version but tag is $tag; bump the version and commit first"
+              exit 1
+            fi
+          else
+            version="$file_version"
+          fi
+
+          if [ "$publish" = "true" ] && [ -z "$tag" ]; then
+            echo "::error::publish=true requires a tag"
+            exit 1
+          fi
+
+          echo "version=$version"  >> "$GITHUB_OUTPUT"
+          echo "tag=$tag"          >> "$GITHUB_OUTPUT"
+          echo "publish=$publish"  >> "$GITHUB_OUTPUT"
+          echo "version=$version tag=${tag:-<none>} publish=$publish"
+
+  linux-deb:
+    name: Ubuntu .deb (server)
+    needs: prep
+    # Build on 22.04 so the glibc/libgcc floor stays low; the package then
+    # installs on 22.04 and 24.04.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build (release)
+        run: cargo build --release --locked
+
+      # Test gate: a red suite means no artifact.
+      - name: Test
+        run: cargo test --release --locked
+
+      - name: Packaging self-test
+        run: python3 scripts/build_deb.py --self-test
+
+      - name: Build .deb (Python, stdlib only)
+        run: |
+          python3 scripts/build_deb.py \
+            --bin-dir target/release \
+            --out-dir dist \
+            --arch "$(dpkg --print-architecture)" \
+            --version "${{ needs.prep.outputs.version }}"
+
+      - name: Inspect package
+        run: |
+          set -euo pipefail
+          deb="$(ls dist/*.deb)"
+          dpkg-deb --info "$deb"
+          dpkg-deb --contents "$deb"
+
+      - name: Install smoke test
+        run: |
+          set -euo pipefail
+          deb="$(ls dist/*.deb)"
+          version="${{ needs.prep.outputs.version }}"
+
+          sudo dpkg -i "$deb"
+
+          echo "== version self-check"
+          psk-server --version | tee /tmp/server.txt
+          grep -qF "psk-server ${version}" /tmp/server.txt
+          psk-client --version | grep -qF "psk-client ${version}"
+
+          echo "== installed files"
+          dpkg -L psk-quic-proxy
+          test -x /usr/bin/psk-server
+          test -x /usr/bin/psk-client
+          test -f /etc/psk-quic-proxy/server.env
+          sudo stat -c '%n mode=%a owner=%U:%G' /etc/psk-quic-proxy/server.env
+
+          echo "== conffile registration"
+          dpkg-query -W -f='${Conffiles}\n' psk-quic-proxy | tee /tmp/conf.txt
+          grep -q '/etc/psk-quic-proxy/server.env' /tmp/conf.txt
+
+          echo "== service start/stop (when systemd is available)"
+          state="$(systemctl is-system-running 2>/dev/null || true)"
+          if [ "$state" = "running" ] || [ "$state" = "degraded" ]; then
+            key="$(openssl rand -hex 32)"
+            printf 'PSK_ARGS=--psk %s\n' "$key" \
+              | sudo tee /etc/psk-quic-proxy/server.env >/dev/null
+            sudo chmod 600 /etc/psk-quic-proxy/server.env
+            sudo systemctl start psk-quic-proxy
+            sleep 2
+            if ! systemctl is-active --quiet psk-quic-proxy; then
+              sudo journalctl -u psk-quic-proxy --no-pager | tail -40
+              exit 1
+            fi
+            sudo ss -uln | grep -q ':4433'
+            sudo systemctl stop psk-quic-proxy
+          else
+            echo "::notice::systemd is not available here; skipped service start/stop"
+          fi
+
+          echo "== uninstall"
+          sudo dpkg -r psk-quic-proxy
+          test ! -e /usr/bin/psk-server
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: dist/*.deb
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish GitHub Release
+    needs: [prep, linux-deb]
+    if: needs.prep.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Collect artifacts and checksums
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          find dist -type f -name '*.deb' -exec cp {} release/ \;
+          ls -l release/
+          (cd release && sha256sum * > SHA256SUMS && cat SHA256SUMS)
+
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.prep.outputs.tag }}
+          VERSION: ${{ needs.prep.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            --repo "$GH_REPO" \
+            --title "psk-quic-proxy $VERSION" \
+            --generate-notes \
+            release/*

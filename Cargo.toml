@@ -1,0 +1,37 @@
+[package]
+name = "psk-quic-proxy"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "QUIC proxy with PSK authentication, SOCKS5 inbound and native stream multiplexing"
+publish = false
+
+[lib]
+name = "psk_quic_proxy"
+path = "src/lib.rs"
+
+[[bin]]
+name = "psk-server"
+path = "src/bin/psk-server.rs"
+
+[[bin]]
+name = "psk-client"
+path = "src/bin/psk-client.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+hkdf = "0.12"
+hmac = "0.12"
+quinn = { version = "0.11", default-features = false, features = ["runtime-tokio", "rustls-ring", "log"] }
+rand = "0.8"
+rcgen = { version = "0.13", default-features = false, features = ["crypto", "ring", "pem"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+sha2 = "0.10"
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }

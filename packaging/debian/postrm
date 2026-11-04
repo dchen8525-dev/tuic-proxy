@@ -1,0 +1,15 @@
+#!/bin/sh
+# psk-quic-proxy post-remove: purge removes the config directory; remove keeps it.
+set -e
+
+if [ "$1" = "purge" ]; then
+  # dpkg removes conffiles itself on purge; this only catches leftovers such as
+  # a key file the administrator created under the same directory.
+  rm -rf /etc/psk-quic-proxy
+fi
+
+if [ -d /run/systemd/system ] && [ -x /bin/systemctl ]; then
+  systemctl --system daemon-reload >/dev/null 2>&1 || true
+fi
+
+exit 0

@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PSK 代理</title>
+<style>
+:root{
+  --bg:#f2f5f7;
+  --surface:#ffffff;
+  --surface-2:#f8fafb;
+  --line:#e4eaee;
+  --fg:#17242b;
+  --fg-2:#3a4a53;
+  --muted:#5c6b73;
+  --accent:#2f6fd8;
+  --accent-2:#275db8;
+  --blue-soft:#e9f0fc;
+  --ok:#1a9f6e;
+  --ok-soft:#e4f6ee;
+  --err:#c2410c;
+  --err-soft:#fdeee4;
+  --shadow:0 1px 2px rgba(20,40,60,.05), 0 14px 34px -22px rgba(20,50,90,.30);
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:radial-gradient(900px 420px at 50% -10%, #e8f0fd 0%, transparent 70%), var(--bg);
+  color:var(--fg);
+  font:14px/1.5 system-ui,-apple-system,"Segoe UI","Noto Sans SC","Microsoft YaHei UI",sans-serif;
+  -webkit-font-smoothing:antialiased;
+  display:flex;
+}
+/* ---------- 左栏 ---------- */
+.rail{
+  flex:0 0 188px;width:188px;display:flex;flex-direction:column;
+  padding:18px 14px 16px;gap:6px;background:linear-gradient(180deg,#ffffff,#fbfcfd);
+  border-right:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 6px 16px}
+.brand .logo{width:32px;height:32px;border-radius:9px;flex:0 0 auto;
+  background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;
+  box-shadow:0 8px 18px -10px rgba(45,110,220,.8)}
+.brand b{display:block;font-size:15px;letter-spacing:.02em;line-height:1.2}
+.brand small{display:block;font-size:11px;color:var(--muted);margin-top:1px}
+.nav{display:flex;flex-direction:column;gap:3px}
+.nav button{
+  display:flex;align-items:center;gap:10px;width:100%;height:38px;padding:0 11px;
+  border:1px solid transparent;border-radius:10px;background:transparent;cursor:pointer;
+  font:inherit;font-size:13px;color:var(--fg-2);text-align:left;transition:.14s;
+}
+.nav button.active{background:var(--blue-soft);color:var(--accent-2);font-weight:600}
+.status-dot{width:9px;height:9px;border-radius:50%;background:#c3cfd8;flex:0 0 auto;transition:.2s}
+.status-dot.on{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
+.rail-foot{margin-top:auto;padding:8px 6px 0;font-size:11px;color:var(--muted)}
+/* ---------- 主区 ---------- */
+.main{flex:1;min-width:0;overflow:auto;padding:26px 30px}
+.page{display:none;max-width:640px}
+.page.active{display:block}
+h1{font-size:18px;margin:0 0 4px}
+h1 small{display:block;font-size:12px;color:var(--muted);font-weight:400;margin-top:2px}
+.field{margin:14px 0}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+.field input,.field select{
+  width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;
+  background:var(--surface);font:inherit;color:inherit;transition:.14s;
+}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--blue-soft)}
+.filter{color:var(--muted-2, #888);padding:6px 0;font-size:11px;text-align:right}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;border:none;border-radius:9px;cursor:pointer;
+  padding:10px 18px;font:inherit;font-weight:600;transition:.15s;
+}
+.btn.disabled{opacity:.55;cursor:not-allowed}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.primary:hover:not(.disabled){background:var(--accent-2)}
+.btn.ghost{background:var(--surface);color:var(--fg-2);border:1px solid var(--line)}
+.btn.ghost:hover:not(.disabled){border-color:var(--accent);color:var(--accent-2)}
+.row{display:flex;align-items:center;gap:12px;margin-top:18px}
+.banner{
+  margin-top:16px;padding:10px 13px;border-radius:10px;font-size:13px;display:none;
+}
+.banner.show{display:block}
+.banner.ok{background:var(--ok-soft);color:var(--ok)}
+.banner.err{background:var(--err-soft);color:var(--err)}
+.banner.info{background:var(--blue-soft);color:var(--accent-2)}
+/* 状态卡 */
+.status-card{
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:20px 22px;box-shadow:var(--shadow);margin-bottom:18px;
+}
+.status-card .big{display:flex;align-items:center;gap:12px;font-size:17px}
+.status-card .big .pill{
+  padding:3px 12px;border-radius:999px;font-size:12px;font-weight:600;
+}
+.pill.on{background:var(--ok-soft);color:var(--ok)}
+.pill.off{background:#eef1f4;color:var(--muted)}
+.meta{margin-top:12px;display:flex;gap:26px;flex-wrap:wrap}
+.meta .kv{font-size:12px;color:var(--muted)}
+.meta .kv b{display:block;font-size:15px;color:var(--fg);font-family:var(--mono);font-weight:600}
+/* 日志 */
+.log-box{
+  background:#101920;color:#d7e2ea;border-radius:12px;padding:12px 14px;
+  font-family:var(--mono);font-size:12px;line-height:1.7;height:320px;overflow:auto;
+  white-space:pre-wrap;word-break:break-all;
+}
+.log-line.err{color:#ffb08a}
+.log-line.none{color:#8aa0b1}
+.log-bar{display:flex;align-items:center;gap:10px;margin:10px 0 6px}
+.log-bar .count{font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+  <aside class="rail">
+    <div class="brand">
+      <span class="logo">P</span>
+      <div><b>PSK 代理</b><small>QUIC · SOCKS5</small></div>
+    </div>
+    <nav class="nav" id="nav">
+      <button data-page="connect" class="active">连接</button>
+      <button data-page="status">状态</button>
+      <button data-page="log">日志</button>
+    </nav>
+    <div class="rail-foot">
+      <span class="status-dot" id="rail-dot"></span> <span id="rail-text">未运行</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- 连接 -->
+    <section class="page active" id="page-connect">
+      <h1>连接设置<small>配置服务端与你本机的入口参数。</small></h1>
+      <div class="grid2">
+        <div class="field">
+          <label>服务端地址</label>
+          <input id="host" placeholder="144.34.186.164" />
+        </div>
+        <div class="field">
+          <label>服务端端口</label>
+          <input id="port" value="4433" />
+        </div>
+      </div>
+      <div class="field">
+        <label>预共享密钥（PSK，两端必须一致）</label>
+        <input id="key" type="password" placeholder="与 psk-server 相同的密钥" autocomplete="off" />
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>本地 SOCKS5 地址</label>
+          <input id="listen" value="127.0.0.1" />
+        </div>
+        <div class="field">
+          <label>本地 SOCKS5 端口</label>
+          <input id="listenPort" value="1080" />
+        </div>
+      </div>
+      <div class="filter">配置保存在本机浏览器存储中，不会上传。</div>
+      <div class="row">
+        <button class="btn primary" id="start-btn">启动代理</button>
+        <button class="btn ghost" id="stop-btn" class="disabled">停止</button>
+      </div>
+      <div class="banner" id="banner"></div>
+    </section>
+
+    <!-- 状态 -->
+    <section class="page" id="page-status">
+      <h1>运行状态</h1>
+      <div class="status-card">
+        <div class="big"><span id="st1-label">代理</span><span class="pill off" id="st1-pill">未运行</span></div>
+        <div class="meta">
+          <div class="kv">SOCKS5 入口<b id="st1-socks">-</b></div>
+          <div class="kv">服务端<b id="st1-server">-</b></div>
+        </div>
+      </div>
+      <div class="banner" id="status-banner"></div>
+    </section>
+
+    <!-- 日志 -->
+    <section class="page" id="page-log">
+      <h1>日志</h1>
+      <div class="log-bar">
+        <button class="btn ghost" id="clear-log">清空</button>
+        <span class="count" id="log-count">0 行</span>
+      </div>
+      <div class="log-box" id="log-box"></div>
+    </section>
+  </main>
+
+<script src="app.js"></script>
+</body>
+</html>
