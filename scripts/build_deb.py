@@ -411,7 +411,7 @@ def main(argv: list[str] | None = None) -> int:
         ])
         # Keep every release artifact in the same
         # <component>-<version>-<platform>-<arch>.<ext> shape.
-        deb_path = os.path.join(out_dir, f"{PACKAGE}-{version}-linux-{args.arch}.deb")
+        deb_path = os.path.join(out_dir, f"{PACKAGE}-server-{version}-linux-{args.arch}.deb")
         with open(deb_path, "wb") as handle:
             handle.write(deb)
 

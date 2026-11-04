@@ -43,12 +43,12 @@ powershell -File apps/desktop/scripts/build_windows.ps1 `
   -ClientBin target\release\tuic-proxy-client.exe
 ```
 
-产物：`dist/tuic-proxy-gui-<版本>-windows-x64.exe`。首次双击时引导器把
-`tuic-proxy-gui.exe` + `tuic-proxy-client.exe` 解到
+产物：`dist/tuic-proxy-client-gui-<版本>-windows-x64.exe`。首次双击时引导器把
+`tuic-proxy-client-gui.exe` + `tuic-proxy-client.exe` 解到
 `%LOCALAPPDATA%\TUICProxy\bin\<载荷哈希>\`，之后直接启动缓存；换新版本按内容
 哈希分目录，旧目录 7 天未用后清理。不写系统目录、不建卸载项、不需要管理员权限。
 
-排障：`tuic-proxy-gui-<版本>-windows-x64.exe --tuic-proxy-launcher-selftest`
+排障：`tuic-proxy-client-gui-<版本>-windows-x64.exe --tuic-proxy-launcher-selftest`
 （写 `%LOCALAPPDATA%\TUICProxy\tuic-proxy-launcher-selftest.txt`）；失败日志在
 `%LOCALAPPDATA%\TUICProxy\launcher.log`。
 
@@ -70,10 +70,10 @@ npx tauri build --bundles appimage
 ```
 
 产物：`apps/desktop/src-tauri/target/release/bundle/appimage/
-tuic-proxy-gui_<版本>_amd64.AppImage`（Tauri 的默认命名）。CI 发布时会复制成
-`tuic-proxy-gui-<版本>-linux-amd64.AppImage`，与 deb / Windows exe 的命名保持一致。
+tuic-proxy-client-gui_<版本>_amd64.AppImage`（Tauri 的默认命名）。CI 发布时会复制成
+`tuic-proxy-client-gui-<版本>-linux-amd64.AppImage`，与 deb / Windows exe 的命名保持一致。
 `chmod +x` 后双击即可运行，不安装；系统没有 FUSE 2 时可用
-`APPIMAGE_EXTRACT_AND_RUN=1 ./tuic-proxy-gui-*.AppImage`。
+`APPIMAGE_EXTRACT_AND_RUN=1 ./tuic-proxy-client-gui-*.AppImage`。
 
 AppImage 内已包含 WebKitGTK/GTK 运行库；目标机器需要 glibc ≥ 2.35（Ubuntu 22.04
 基线）。

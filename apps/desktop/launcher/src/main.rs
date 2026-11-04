@@ -18,7 +18,7 @@
 //! ```
 //!
 //! 首次运行把载荷解压到 `%LOCALAPPDATA%\TUICProxy\bin\<SHA-256 前 8 字节>\`，
-//! 之后直接启动缓存里的 `tuic-proxy-gui.exe`；不同版本按内容哈希分目录共存，
+//! 之后直接启动缓存里的 `tuic-proxy-client-gui.exe`；不同版本按内容哈希分目录共存，
 //! 7 天未使用的旧版本目录会被清理。用户数据（WebView localStorage）由
 //! Tauri 按 `com.tuic.proxy` 单独保存，与本缓存无关，升级不丢配置。
 
@@ -36,7 +36,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 const FOOTER_LEN: u64 = 64;
 const MAGIC: &[u8; 8] = b"TUICBOOT";
 const FORMAT_VERSION: u32 = 1;
-const APP_NAME: &str = "tuic-proxy-gui.exe";
+const APP_NAME: &str = "tuic-proxy-client-gui.exe";
 const SIDECAR_NAME: &str = "tuic-proxy-client.exe";
 const MARKER: &str = ".ready";
 const USED_STAMP: &str = ".used";

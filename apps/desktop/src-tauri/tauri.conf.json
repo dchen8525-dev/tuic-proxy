@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tuic-proxy-gui",
+  "productName": "tuic-proxy-client-gui",
   "version": "0.0.1",
   "identifier": "com.tuic.proxy",
   "build": {
@@ -39,5 +39,5 @@
     "shortDescription": "TUIC 代理客户端",
     "longDescription": "TUIC Proxy 客户端：本地 SOCKS5 入口，经 PSK 认证的 QUIC 隧道转发。便携版，不安装。"
   },
-  "mainBinaryName": "tuic-proxy-gui"
+  "mainBinaryName": "tuic-proxy-client-gui"
 }
