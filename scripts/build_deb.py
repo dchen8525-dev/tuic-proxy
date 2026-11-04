@@ -409,7 +409,9 @@ def main(argv: list[str] | None = None) -> int:
             ("control.tar.gz", control_gz),
             ("data.tar.gz", data_gz),
         ])
-        deb_path = os.path.join(out_dir, f"{PACKAGE}_{version}_{args.arch}.deb")
+        # Keep every release artifact in the same
+        # <component>-<version>-<platform>-<arch>.<ext> shape.
+        deb_path = os.path.join(out_dir, f"{PACKAGE}-{version}-linux-{args.arch}.deb")
         with open(deb_path, "wb") as handle:
             handle.write(deb)
 

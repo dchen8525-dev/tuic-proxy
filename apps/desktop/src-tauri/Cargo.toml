@@ -1,6 +1,6 @@
 [package]
 name = "tuic-proxy-desktop"
-version = "0.2.0"
+version = "0.0.1"
 edition = "2021"
 description = "PSK QUIC 代理客户端（Tauri 2 壳；代理由 tuic-proxy-client sidecar 承载）"
 license = "MIT"

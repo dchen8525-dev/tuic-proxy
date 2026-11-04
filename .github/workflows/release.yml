@@ -1,11 +1,11 @@
 name: release
 
-# Publishing is tag-driven: `git tag v0.2.0 && git push origin v0.2.0`.
+# Publishing is tag-driven: `git tag v0.0.1 && git push origin v0.0.1`.
 #
 # The workflow builds three portable artifacts and attaches them to a GitHub
 # Release:
-#   * tuic-proxy_<ver>_<arch>.deb                  server + client, systemd unit
-#   * tuic-proxy-gui_<ver>_<arch>.AppImage         Linux GUI, no install
+#   * tuic-proxy-<ver>-linux-<arch>.deb            server + client, systemd unit
+#   * tuic-proxy-gui-<ver>-linux-<arch>.AppImage   Linux GUI, no install
 #   * tuic-proxy-gui-<ver>-windows-x64.exe         Windows GUI, single file
 #
 # The Linux .deb job also runs the test suite and verifies that the package
@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to publish (e.g. v0.2.0). Leave empty to only build artifacts."
+        description: "Release tag to publish (e.g. v0.0.1). Leave empty to only build artifacts."
         required: false
         type: string
       publish:
@@ -249,7 +249,11 @@ jobs:
           ./squashfs-root/usr/bin/tuic-proxy-client --version
           rm -rf squashfs-root
           mkdir -p dist
-          cp "$appimage" dist/
+          # Tauri names the bundle with underscores; publish it with the same
+          # <component>-<version>-<platform>-<arch> shape as the other assets.
+          version="${{ needs.prep.outputs.version }}"
+          arch="$(dpkg --print-architecture)"
+          cp "$appimage" "dist/tuic-proxy-gui-${version}-linux-${arch}.AppImage"
           ls -l dist
 
       - uses: actions/upload-artifact@v4

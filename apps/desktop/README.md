@@ -70,8 +70,10 @@ npx tauri build --bundles appimage
 ```
 
 产物：`apps/desktop/src-tauri/target/release/bundle/appimage/
-tuic-proxy-gui_<版本>_amd64.AppImage`。`chmod +x` 后双击即可运行，不安装；
-系统没有 FUSE 2 时可用 `APPIMAGE_EXTRACT_AND_RUN=1 ./tuic-proxy-gui_*.AppImage`。
+tuic-proxy-gui_<版本>_amd64.AppImage`（Tauri 的默认命名）。CI 发布时会复制成
+`tuic-proxy-gui-<版本>-linux-amd64.AppImage`，与 deb / Windows exe 的命名保持一致。
+`chmod +x` 后双击即可运行，不安装；系统没有 FUSE 2 时可用
+`APPIMAGE_EXTRACT_AND_RUN=1 ./tuic-proxy-gui-*.AppImage`。
 
 AppImage 内已包含 WebKitGTK/GTK 运行库；目标机器需要 glibc ≥ 2.35（Ubuntu 22.04
 基线）。

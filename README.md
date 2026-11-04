@@ -102,7 +102,7 @@ IPv6 服务端写成 `--server '[2001:db8::1]'`（可带 `:端口`）即可，�
 | 平台 | 发布物 | 说明 |
 | --- | --- | --- |
 | Windows 10/11 | `tuic-proxy-gui-<版本>-windows-x64.exe` | 单个 exe，内含 GUI + sidecar |
-| Linux x86_64 | `tuic-proxy-gui_<版本>_amd64.AppImage` | 单个 AppImage，内含 GUI、sidecar 与 WebKitGTK 依赖 |
+| Linux x86_64 | `tuic-proxy-gui-<版本>-linux-amd64.AppImage` | 单个 AppImage，内含 GUI、sidecar 与 WebKitGTK 依赖 |
 
 - Windows 首次运行把 `tuic-proxy-gui.exe` + `tuic-proxy-client.exe` 解到
   `%LOCALAPPDATA%\TUICProxy\bin\<哈希>\`；Linux AppImage 直接挂载运行，不写系统目录；
@@ -111,9 +111,9 @@ IPv6 服务端写成 `--server '[2001:db8::1]'`（可带 `:端口`）即可，�
 - 关窗或异常退出时一并结束 sidecar（Windows 用 Job Object，Linux 用 SIGTERM），
   不残留占用端口。
 
-Linux 下载后需要一次 `chmod +x tuic-proxy-gui_*.AppImage`（浏览器下载会丢掉可执行位），
+Linux 下载后需要一次 `chmod +x tuic-proxy-gui-*.AppImage`（浏览器下载会丢掉可执行位），
 之后即可双击运行；若系统没有 FUSE 2，可用
-`APPIMAGE_EXTRACT_AND_RUN=1 ./tuic-proxy-gui_*.AppImage`。
+`APPIMAGE_EXTRACT_AND_RUN=1 ./tuic-proxy-gui-*.AppImage`。
 
 构建方法见 [`apps/desktop/README.md`](apps/desktop/README.md)。
 
@@ -196,13 +196,13 @@ python3 scripts/build_deb.py --self-test      # 只跑打包器自检
 安装后先编辑 `/etc/tuic-proxy/server.env`，填入 `PSK_ARGS=--psk <密钥>`，再
 `systemctl enable --now tuic-proxy`。安装时不会自动启动——包里不含密钥。
 
-发布由 GitHub Actions 完成（`.github/workflows/release.yml`）：推送形如 `v0.2.0` 的
+发布由 GitHub Actions 完成（`.github/workflows/release.yml`）：推送形如 `v0.0.1` 的
 tag 即触发整条流水线，并行构建三类发布物：
 
 | 产物 | 内容 |
 | --- | --- |
-| `tuic-proxy_<版本>_<架构>.deb` | 服务端 + 客户端 + systemd 单元（Ubuntu 22.04 构建） |
-| `tuic-proxy-gui_<版本>_<架构>.AppImage` | Linux GUI，免安装 |
+| `tuic-proxy-<版本>-linux-<架构>.deb` | 服务端 + 客户端 + systemd 单元（Ubuntu 22.04 构建） |
+| `tuic-proxy-gui-<版本>-linux-<架构>.AppImage` | Linux GUI，免安装 |
 | `tuic-proxy-gui-<版本>-windows-x64.exe` | Windows GUI，单文件 |
 
 deb 任务同时跑 `cargo test` 门禁，并做 `dpkg -i`、版本/文件/conffile 校验、systemd
@@ -211,7 +211,7 @@ deb 任务同时跑 `cargo test` 门禁，并做 `dpkg -i`、版本/文件/conff
 否则 workflow 直接失败。
 
 ```console
-git tag v0.2.0 && git push origin v0.2.0
+git tag v0.0.1 && git push origin v0.0.1
 ```
 
 发布前如需换仓库地址或维护者，请修改 `packaging/debian/metadata.env`。

@@ -10,7 +10,7 @@
 #
 # Usage:
 #   powershell -File apps/desktop/scripts/bundle_windows_portable.ps1 `
-#     -ExeDir apps\desktop\src-tauri\target\release [-Version 0.2.0] [-OutDir dist]
+#     -ExeDir apps\desktop\src-tauri\target\release [-Version 0.0.1] [-OutDir dist]
 
 [CmdletBinding()]
 param(

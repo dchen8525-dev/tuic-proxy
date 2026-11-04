@@ -1,6 +1,6 @@
 [package]
 name = "tuic-proxy"
-version = "0.2.0"
+version = "0.0.1"
 edition = "2021"
 rust-version = "1.85"
 description = "QUIC proxy with PSK authentication, SOCKS5 inbound and native stream multiplexing"
