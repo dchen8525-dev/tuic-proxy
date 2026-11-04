@@ -33,8 +33,9 @@ apps/desktop/
 - **日志**：sidecar 的 stdout/stderr 逐行显示，带行数统计与清空。
 
 启动 sidecar 时只传 `--server`、`--socks` 与 `--psk=<密钥>`，其余用默认值。
-配置存在 WebView 的 localStorage（`com.tuic.proxy`）。关窗或异常退出时一并结束
-sidecar（Windows 用 Job Object，Linux 用 SIGTERM），不会残留占用 SOCKS5 端口。
+配置存在 WebView 的 localStorage（`com.tuic.proxy`）。最小化或关窗时窗口收进系统
+托盘，代理继续运行；左键点击托盘图标恢复窗口，托盘菜单“退出”才会结束 sidecar
+（Windows 用 Job Object，Linux 用 SIGTERM），不会残留占用 SOCKS5 端口。
 
 ## Windows 构建（单文件便携）
 

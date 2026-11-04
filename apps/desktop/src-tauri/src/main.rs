@@ -19,7 +19,9 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tauri::{Emitter, Manager, State};
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::{Emitter, Manager, State, WindowEvent};
 
 struct ProxyProc {
     child: Arc<Mutex<Option<Child>>>,
@@ -678,6 +680,57 @@ fn start_proxy(
     Ok(())
 }
 
+/// 显示并聚焦主窗口（托盘点击/菜单共用）。
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
+/// 系统托盘：左键恢复窗口，右键菜单可恢复或彻底退出。
+fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
+    let show = MenuItem::with_id(app, "show", "显示主界面", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&show, &quit])?;
+
+    let mut builder = TrayIconBuilder::with_id("main")
+        .tooltip("TUIC 代理")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "show" => show_main_window(app),
+            "quit" => {
+                if let Some(state) = app.try_state::<ProxyProc>() {
+                    if let Ok(mut guard) = state.child.lock() {
+                        if let Some(mut child) = guard.take() {
+                            state.run_id.fetch_add(1, Ordering::SeqCst);
+                            kill_child(&mut child);
+                        }
+                    }
+                }
+                app.exit(0);
+            }
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                show_main_window(tray.app_handle());
+            }
+        });
+    if let Some(icon) = app.default_window_icon() {
+        builder = builder.icon(icon.clone());
+    }
+    builder.build(app)?;
+    Ok(())
+}
+
 fn main() {
     let child = Arc::new(Mutex::new(None::<Child>));
     let run_id = Arc::new(AtomicU64::new(0));
@@ -690,6 +743,21 @@ fn main() {
 
     let app = tauri::Builder::default()
         .manage(proc_state)
+        .setup(|app| {
+            build_tray(app.handle())?;
+            Ok(())
+        })
+        .on_window_event(|window, event| match event {
+            // 关窗/最小化都收进托盘，代理继续运行；退出走托盘菜单。
+            WindowEvent::CloseRequested { api, .. } => {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+            WindowEvent::Resized(_) if window.is_minimized().unwrap_or(false) => {
+                let _ = window.hide();
+            }
+            _ => {}
+        })
         .invoke_handler(tauri::generate_handler![
             start_proxy,
             stop_proxy,

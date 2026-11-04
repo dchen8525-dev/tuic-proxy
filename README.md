@@ -110,8 +110,8 @@ IPv6 服务端写成 `--server '[2001:db8::1]'`（可带 `:端口`）即可，�
 - “链路测试”页经本地 SOCKS5 访问 Cloudflare 测速端点，显示延迟/抖动、下载/上传
   速率，并汇总 QUIC 路径统计给出隧道丢包率与平均 RTT；
 - 配置存在 WebView 的 localStorage，升级不丢；
-- 关窗或异常退出时一并结束 sidecar（Windows 用 Job Object，Linux 用 SIGTERM），
-  不残留占用端口。
+- 最小化或关窗时收进系统托盘，代理继续运行；左键点击托盘图标恢复窗口，托盘菜单
+  “退出”才会结束 sidecar（Windows 用 Job Object，Linux 用 SIGTERM），不残留占用端口。
 
 Linux 下载后需要一次 `chmod +x tuic-proxy-client-gui-*.AppImage`（浏览器下载会丢掉可执行位），
 之后即可双击运行；若系统没有 FUSE 2，可用
