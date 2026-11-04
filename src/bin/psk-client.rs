@@ -9,6 +9,7 @@ use tracing_subscriber::EnvFilter;
 
 #[derive(Debug, Parser)]
 #[command(
+    name = "psk-client",
     version,
     about = "SOCKS5 client for the PSK QUIC proxy",
     long_about = None
@@ -72,6 +73,14 @@ async fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::CommandFactory;
+
+    #[test]
+    fn version_reports_the_binary_name() {
+        // Both binaries live in one package, so clap would otherwise fall back
+        // to the package name (psk-quic-proxy).
+        assert_eq!(Args::command().get_name(), "psk-client");
+    }
 
     #[test]
     fn listen_accepts_a_bare_port() {
