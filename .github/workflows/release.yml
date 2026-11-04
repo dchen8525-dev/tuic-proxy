@@ -295,8 +295,13 @@ jobs:
         run: |
           $exe = Get-ChildItem dist -Filter *.exe | Select-Object -First 1
           if (!$exe) { throw "portable exe missing" }
-          & $exe.FullName --tuic-proxy-launcher-selftest
-          if ($LASTEXITCODE -ne 0) { throw "launcher selftest failed ($LASTEXITCODE)" }
+          # The launcher is a GUI-subsystem executable, so `&` does not update
+          # $LASTEXITCODE reliably; Start-Process -Wait gives the real code.
+          $proc = Start-Process -FilePath $exe.FullName `
+            -ArgumentList "--tuic-proxy-launcher-selftest" -Wait -PassThru
+          if ($proc.ExitCode -ne 0) {
+            throw "launcher selftest failed ($($proc.ExitCode))"
+          }
           $report = Join-Path $env:LOCALAPPDATA "TUICProxy\tuic-proxy-launcher-selftest.txt"
           if (!(Test-Path $report)) { throw "selftest report missing: $report" }
           Get-Content $report
