@@ -4,9 +4,9 @@
  .
  This package installs both ends:
  .
-  * psk-server -- listens on UDP and connects to the requested targets;
-  * psk-client -- opens a local SOCKS5 entry and forwards it over QUIC.
+  * tuic-proxy-server -- listens on UDP and connects to the requested targets;
+  * tuic-proxy-client -- opens a local SOCKS5 entry and forwards it over QUIC.
  .
  A systemd unit for the server is included. Startup arguments live in
- /etc/psk-quic-proxy/server.env (a dpkg conffile, so upgrades keep your edits).
+ /etc/tuic-proxy/server.env (a dpkg conffile, so upgrades keep your edits).
  The service is not started on install: you must supply a PSK first.

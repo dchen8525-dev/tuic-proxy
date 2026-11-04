@@ -3,13 +3,13 @@ use std::time::Duration;
 
 use anyhow::Result;
 use clap::Parser;
-use psk_quic_proxy::client::{self, ClientOptions};
-use psk_quic_proxy::{DEFAULT_CONNECTIONS, DEFAULT_IDLE_TIMEOUT_SECS, DEFAULT_MAX_STREAMS};
 use tracing_subscriber::EnvFilter;
+use tuic_proxy::client::{self, ClientOptions};
+use tuic_proxy::{DEFAULT_CONNECTIONS, DEFAULT_IDLE_TIMEOUT_SECS, DEFAULT_MAX_STREAMS};
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "psk-client",
+    name = "tuic-proxy-client",
     version,
     about = "SOCKS5 client for the PSK QUIC proxy",
     long_about = None
@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
         .init();
 
     let args = Args::parse();
-    let psk = psk_quic_proxy::cli::read_psk(&args.psk)?;
+    let psk = tuic_proxy::cli::read_psk(&args.psk)?;
 
     let mut handle = client::start(ClientOptions {
         server: args.server,
@@ -61,7 +61,10 @@ async fn main() -> Result<()> {
     })
     .await?;
 
-    println!("psk-client SOCKS5 listening on {}", handle.socks_addr());
+    println!(
+        "tuic-proxy-client SOCKS5 listening on {}",
+        handle.socks_addr()
+    );
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {},
         _ = handle.wait() => {},
@@ -78,8 +81,8 @@ mod tests {
     #[test]
     fn version_reports_the_binary_name() {
         // Both binaries live in one package, so clap would otherwise fall back
-        // to the package name (psk-quic-proxy).
-        assert_eq!(Args::command().get_name(), "psk-client");
+        // to the package name (tuic-proxy).
+        assert_eq!(Args::command().get_name(), "tuic-proxy-client");
     }
 
     #[test]

@@ -1,4 +1,4 @@
-// PSK 代理桌面客户端前端（无打包器，直接由 Tauri 加载静态文件）。
+// TUIC 代理桌面客户端前端（无打包器，直接由 Tauri 加载静态文件）。
 // 通过 window.__TAURI__.core.invoke 调用 Rust 侧 command。
 
 /* global window */
@@ -11,7 +11,7 @@ const invoke = T.core.invoke;
 const listen = T.event.listen;
 
 const $ = (id) => document.getElementById(id);
-const storage_key = "psk-proxy-config";
+const storage_key = "tuic-proxy-config";
 
 // ---------- 导航 ----------
 const pages = {};

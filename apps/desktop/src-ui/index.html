@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>PSK 代理</title>
+<title>TUIC 代理</title>
 <style>
 :root{
   --bg:#f2f5f7;
@@ -116,8 +116,8 @@ h1 small{display:block;font-size:12px;color:var(--muted);font-weight:400;margin-
 <body>
   <aside class="rail">
     <div class="brand">
-      <span class="logo">P</span>
-      <div><b>PSK 代理</b><small>QUIC · SOCKS5</small></div>
+      <span class="logo">T</span>
+      <div><b>TUIC 代理</b><small>QUIC · SOCKS5</small></div>
     </div>
     <nav class="nav" id="nav">
       <button data-page="connect" class="active">连接</button>
@@ -145,7 +145,7 @@ h1 small{display:block;font-size:12px;color:var(--muted);font-weight:400;margin-
       </div>
       <div class="field">
         <label>预共享密钥（PSK，两端必须一致）</label>
-        <input id="key" type="password" placeholder="与 psk-server 相同的密钥" autocomplete="off" />
+        <input id="key" type="password" placeholder="与 tuic-proxy-server 相同的密钥" autocomplete="off" />
       </div>
       <div class="grid2">
         <div class="field">
@@ -160,7 +160,7 @@ h1 small{display:block;font-size:12px;color:var(--muted);font-weight:400;margin-
       <div class="filter">配置保存在本机浏览器存储中，不会上传。</div>
       <div class="row">
         <button class="btn primary" id="start-btn">启动代理</button>
-        <button class="btn ghost" id="stop-btn" class="disabled">停止</button>
+        <button class="btn ghost disabled" id="stop-btn">停止</button>
       </div>
       <div class="banner" id="banner"></div>
     </section>

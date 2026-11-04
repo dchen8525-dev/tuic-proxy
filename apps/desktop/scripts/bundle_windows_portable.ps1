@@ -1,16 +1,16 @@
-# Pack the tauri-built PSKProxy.exe (+ sidecar) into a single-file portable exe.
+# Pack the tauri-built tuic-proxy-gui.exe (+ sidecar) into a single-file portable exe.
 #
-#   [psk-launcher.exe][payload.zip][64-byte footer]
+#   [tuic-proxy-launcher.exe][payload.zip][64-byte footer]
 #
 # On first run the launcher extracts the payload to
-# %LOCALAPPDATA%\PSKProxy\bin\<first-8 of SHA-256>\ and launches the cached
-# PSKProxy.exe; new versions get their own directory by content hash and old
+# %LOCALAPPDATA%\TUICProxy\bin\<first-8 of SHA-256>\ and launches the cached
+# tuic-proxy-gui.exe; new versions get their own directory by content hash and old
 # unused directories are cleaned after 7 days. User settings live in the
-# WebView localStorage (keyed by com.psk.proxy).
+# WebView localStorage (keyed by com.tuic.proxy).
 #
 # Usage:
 #   powershell -File apps/desktop/scripts/bundle_windows_portable.ps1 `
-#     -ExeDir apps\desktop\src-tauri\target\release [-Version 0.1.0]
+#     -ExeDir apps\desktop\src-tauri\target\release [-Version 0.2.0] [-OutDir dist]
 
 [CmdletBinding()]
 param(
@@ -21,28 +21,35 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repo = Resolve-Path (Join-Path $PSScriptRoot "..\..\..")
-if (-not $Version) { $Version = "0.1.0" }
+if (-not $Version) {
+  $cargoToml = Get-Content (Join-Path $repo "Cargo.toml") -Raw
+  if ($cargoToml -match '(?ms)^\[package\].*?^version\s*=\s*"([^"]+)"') {
+    $Version = $Matches[1]
+  } else {
+    throw "cannot read [package].version from Cargo.toml; pass -Version"
+  }
+}
 if (-not $OutDir) { $OutDir = Join-Path $repo "dist" }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
-$app = Join-Path $ExeDir "PSKProxy.exe"
+$app = Join-Path $ExeDir "tuic-proxy-gui.exe"
 if (!(Test-Path $app)) { throw "cannot find $app; run npx tauri build first" }
-$sidecar = Get-ChildItem $ExeDir -Filter "psk-client*.exe" |
-           Where-Object { $_.Name -ne "PSKProxy.exe" } | Select-Object -First 1
-if (!$sidecar) { throw "cannot find sidecar psk-client*.exe" }
+$sidecar = Get-ChildItem $ExeDir -Filter "tuic-proxy-client*.exe" |
+           Where-Object { $_.Name -ne "tuic-proxy-gui.exe" } | Select-Object -First 1
+if (!$sidecar) { throw "cannot find sidecar tuic-proxy-client*.exe" }
 
 if (-not [BitConverter]::IsLittleEndian) {
   throw "this script assumes a little-endian host"
 }
 
-$stage = Join-Path ([System.IO.Path]::GetTempPath()) ("psk-launcher-stage-" + [guid]::NewGuid())
+$stage = Join-Path ([System.IO.Path]::GetTempPath()) ("tuic-proxy-launcher-stage-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 try {
   $payloadDir = Join-Path $stage "payload"
   New-Item -ItemType Directory -Force -Path $payloadDir | Out-Null
-  Copy-Item $app (Join-Path $payloadDir "PSKProxy.exe")
-  Copy-Item $sidecar.FullName (Join-Path $payloadDir "psk-client.exe")
-  Set-Content -Path (Join-Path $payloadDir "version.txt") -Encoding utf8 -Value "PSKProxy $Version"
+  Copy-Item $app (Join-Path $payloadDir "tuic-proxy-gui.exe")
+  Copy-Item $sidecar.FullName (Join-Path $payloadDir "tuic-proxy-client.exe")
+  Set-Content -Path (Join-Path $payloadDir "version.txt") -Encoding utf8 -Value "tuic-proxy-gui $Version"
 
   # 1) build the launcher
   $crateDir = Join-Path $repo "apps\desktop\launcher"
@@ -52,7 +59,7 @@ try {
     cargo build --release --target-dir $targetDir
     if ($LASTEXITCODE -ne 0) { throw "cargo build (launcher) failed" }
   } finally { Pop-Location }
-  $launcher = Join-Path $targetDir "release\psk-launcher.exe"
+  $launcher = Join-Path $targetDir "release\tuic-proxy-launcher.exe"
   if (!(Test-Path $launcher)) { throw "cannot find $launcher" }
 
   # 2) payload zip
@@ -75,14 +82,14 @@ try {
   $length = (Get-Item $payload).Length
 
   $footer = [byte[]]::new(64)
-  [Text.Encoding]::ASCII.GetBytes("PSKBOOT1").CopyTo($footer, 0)
+  [Text.Encoding]::ASCII.GetBytes("TUICBOOT").CopyTo($footer, 0)
   [BitConverter]::GetBytes([uint32]1).CopyTo($footer, 8)   # format version
   [BitConverter]::GetBytes([uint64]$offset).CopyTo($footer, 16)
   [BitConverter]::GetBytes([uint64]$length).CopyTo($footer, 24)
   $hash.CopyTo($footer, 32)
 
   # 4) concatenate: launcher + payload + footer
-  $out = Join-Path $OutDir "PSKProxy-$Version-win64.exe"
+  $out = Join-Path $OutDir "tuic-proxy-gui-$Version-windows-x64.exe"
   $fs = [System.IO.File]::Create($out)
   try {
     foreach ($part in @($launcher, $payload)) {

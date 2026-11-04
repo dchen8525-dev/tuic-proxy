@@ -54,9 +54,9 @@ impl Psk {
             );
         }
 
-        let hk = Hkdf::<Sha256>::new(Some(b"psk-quic-proxy/v1/salt"), bytes);
+        let hk = Hkdf::<Sha256>::new(Some(b"tuic-proxy/v1/salt"), bytes);
         let mut key = [0u8; 32];
-        hk.expand(b"psk-quic-proxy/v1/auth-key", &mut key)
+        hk.expand(b"tuic-proxy/v1/auth-key", &mut key)
             .map_err(|_| anyhow!("cannot derive the PSK"))?;
         Ok(Self { key })
     }
@@ -64,7 +64,7 @@ impl Psk {
     fn mac(&self, label: &[u8], exporter: &[u8], parts: &[&[u8]]) -> Result<Hmac<Sha256>> {
         let mut mac = Hmac::<Sha256>::new_from_slice(&self.key)
             .map_err(|_| anyhow!("invalid HMAC key length"))?;
-        mac.update(b"psk-quic-proxy/v1/");
+        mac.update(b"tuic-proxy/v1/");
         mac.update(label);
         mac.update(exporter);
         for part in parts {
@@ -88,7 +88,7 @@ impl Psk {
 /// Bind the PSK proof to this specific QUIC/TLS connection.
 fn exporter(conn: &Connection) -> Result<[u8; 32]> {
     let mut out = [0u8; 32];
-    conn.export_keying_material(&mut out, b"psk-quic-proxy/v1 exporter", &[])
+    conn.export_keying_material(&mut out, b"tuic-proxy/v1 exporter", &[])
         .map_err(|error| anyhow!("cannot export QUIC keying material: {error:?}"))?;
     Ok(out)
 }

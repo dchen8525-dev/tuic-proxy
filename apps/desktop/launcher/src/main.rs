@@ -1,4 +1,4 @@
-//! PSK 代理单文件引导器。
+//! TUIC 代理单文件引导器。
 //!
 //! 发行物布局：
 //!
@@ -9,7 +9,7 @@
 //! 尾部（小端）：
 //!
 //! ```text
-//! 0..8    "PSKBOOT1"
+//! 0..8    "TUICBOOT"
 //! 8..12   u32 格式版本（当前为 1）
 //! 12..16  u32 保留（0）
 //! 16..24  u64 载荷偏移
@@ -17,10 +17,10 @@
 //! 32..64  SHA-256（载荷内容，用于缓存目录名）
 //! ```
 //!
-//! 首次运行把载荷解压到 `%LOCALAPPDATA%\PSKProxy\bin\<SHA-256 前 8 字节>\`，
-//! 之后直接启动缓存里的 `PSKProxy.exe`；不同版本按内容哈希分目录共存，
+//! 首次运行把载荷解压到 `%LOCALAPPDATA%\TUICProxy\bin\<SHA-256 前 8 字节>\`，
+//! 之后直接启动缓存里的 `tuic-proxy-gui.exe`；不同版本按内容哈希分目录共存，
 //! 7 天未使用的旧版本目录会被清理。用户数据（WebView localStorage）由
-//! Tauri 按 `com.psk.proxy` 单独保存，与本缓存无关，升级不丢配置。
+//! Tauri 按 `com.tuic.proxy` 单独保存，与本缓存无关，升级不丢配置。
 
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
@@ -34,13 +34,13 @@ use std::process::Command;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const FOOTER_LEN: u64 = 64;
-const MAGIC: &[u8; 8] = b"PSKBOOT1";
+const MAGIC: &[u8; 8] = b"TUICBOOT";
 const FORMAT_VERSION: u32 = 1;
-const APP_NAME: &str = "PSKProxy.exe";
-const SIDECAR_NAME: &str = "psk-client.exe";
+const APP_NAME: &str = "tuic-proxy-gui.exe";
+const SIDECAR_NAME: &str = "tuic-proxy-client.exe";
 const MARKER: &str = ".ready";
 const USED_STAMP: &str = ".used";
-const SELFTEST_FLAG: &str = "--psk-launcher-selftest";
+const SELFTEST_FLAG: &str = "--tuic-proxy-launcher-selftest";
 /// 旧版本目录保留期：超过这个时间没有启动过就清理。
 const CACHE_RETENTION: Duration = Duration::from_secs(7 * 24 * 60 * 60);
 /// 半成品解压目录超过这个时间才清理，避免打断正在解压的另一个实例。
@@ -92,7 +92,7 @@ fn read_footer(exe: &Path) -> Result<Footer, String> {
         .map_err(|e| format!("无法读取自身大小：{e}"))?
         .len();
     if total < FOOTER_LEN {
-        return Err("不是 PSK 代理单文件发行物：文件太短".into());
+        return Err("不是 TUIC 代理单文件发行物：文件太短".into());
     }
     file.seek(SeekFrom::Start(total - FOOTER_LEN))
         .map_err(|e| format!("无法读取引导尾部：{e}"))?;
@@ -107,7 +107,7 @@ fn parse_footer(buf: &[u8], total: u64) -> Result<Footer, String> {
         return Err("引导尾部长度不对".into());
     }
     if &buf[0..8] != &MAGIC[..] {
-        return Err("不是 PSK 代理单文件发行物：缺少引导尾部标记（文件可能被截断）".into());
+        return Err("不是 TUIC 代理单文件发行物：缺少引导尾部标记（文件可能被截断）".into());
     }
     let format = u32::from_le_bytes(buf[8..12].try_into().unwrap());
     if format != FORMAT_VERSION {
@@ -135,7 +135,7 @@ fn cache_root() -> Result<PathBuf, String> {
         .filter(|v| !v.is_empty())
         .map(PathBuf::from)
         .ok_or_else(|| "环境变量 LOCALAPPDATA 缺失，无法确定缓存目录".to_string())?;
-    Ok(base.join("PSKProxy").join("bin"))
+    Ok(base.join("TUICProxy").join("bin"))
 }
 
 fn cache_key(sha256: &[u8; 32]) -> String {
@@ -335,7 +335,7 @@ fn selftest_file() -> PathBuf {
         .ok()
         .and_then(|p| p.parent().map(Path::to_path_buf))
         .unwrap_or_else(env::temp_dir)
-        .join("psk-launcher-selftest.txt")
+        .join("tuic-proxy-launcher-selftest.txt")
 }
 
 fn report_error(message: &str) {
@@ -358,7 +358,7 @@ fn report_error(message: &str) {
         }
     }
     #[cfg(windows)]
-    message_box("PSK 代理启动失败", message);
+    message_box("TUIC 代理启动失败", message);
 }
 
 #[cfg(windows)]

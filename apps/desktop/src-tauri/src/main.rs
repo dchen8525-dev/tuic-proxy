@@ -1,6 +1,6 @@
-//! PSK 代理客户端外壳（Tauri 2）。
+//! TUIC 代理客户端外壳（Tauri 2）。
 //!
-//! 传输层没动：真正跑隧道的是同一个 `psk-client`（src/bin/psk-client.rs），
+//! 传输层没动：真正跑隧道的是同一个 `tuic-proxy-client`（src/bin/tuic-proxy-client.rs），
 //! 这里只做三件事：
 //!   1. 用表单参数启动 sidecar；
 //!   2. 逐行读 sidecar 的 stdout/stderr，转发成日志事件；
@@ -37,19 +37,19 @@ struct ProxyConfig {
 
 fn sidecar_name() -> &'static str {
     if cfg!(windows) {
-        "psk-client.exe"
+        "tuic-proxy-client.exe"
     } else {
-        "psk-client"
+        "tuic-proxy-client"
     }
 }
 
 fn resolve_sidecar(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    if let Ok(p) = std::env::var("PSKPROXY_CLIENT_BIN") {
+    if let Ok(p) = std::env::var("TUIC_PROXY_CLIENT_BIN") {
         let p = PathBuf::from(p);
         if p.is_file() {
             return Ok(p);
         }
-        return Err(format!("PSKPROXY_CLIENT_BIN={} 不是文件", p.display()));
+        return Err(format!("TUIC_PROXY_CLIENT_BIN={} 不是文件", p.display()));
     }
     if let Ok(dir) = app.path().resource_dir() {
         let p = dir.join(sidecar_name());
@@ -66,7 +66,7 @@ fn resolve_sidecar(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         }
     }
     Err(format!(
-        "找不到 {}（应与主程序同目录，或用 PSKPROXY_CLIENT_BIN 指定）",
+        "找不到 {}（应与主程序同目录，或用 TUIC_PROXY_CLIENT_BIN 指定）",
         sidecar_name()
     ))
 }

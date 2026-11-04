@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a Debian/Ubuntu .deb for psk-quic-proxy using only the standard library.
+"""Build a Debian/Ubuntu .deb for tuic-proxy using only the standard library.
 
 The deb format is a plain ar archive with three members:
 
@@ -12,13 +12,13 @@ binaries needed), so it runs the same way on Windows and Linux.  The version
 comes from Cargo.toml [package].version, which stays the single source of truth.
 
 Package layout:
-    /usr/bin/psk-server
-    /usr/bin/psk-client
-    /usr/lib/systemd/system/psk-quic-proxy.service
-    /etc/psk-quic-proxy/server.env            (conffile, mode 0600)
-    /usr/share/doc/psk-quic-proxy/README.md
-    /usr/share/doc/psk-quic-proxy/VERSION
-    /usr/share/doc/psk-quic-proxy/copyright
+    /usr/bin/tuic-proxy-server
+    /usr/bin/tuic-proxy-client
+    /usr/lib/systemd/system/tuic-proxy.service
+    /etc/tuic-proxy/server.env            (conffile, mode 0600)
+    /usr/share/doc/tuic-proxy/README.md
+    /usr/share/doc/tuic-proxy/VERSION
+    /usr/share/doc/tuic-proxy/copyright
 
 Usage:
     python3 scripts/build_deb.py --bin-dir target/release --out-dir dist
@@ -36,10 +36,10 @@ import sys
 import tarfile
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PACKAGE = "psk-quic-proxy"
+PACKAGE = "tuic-proxy"
 DOC_DIR = "usr/share/doc/" + PACKAGE
-UNIT_PATH = "usr/lib/systemd/system/psk-quic-proxy.service"
-ENV_PATH = "etc/psk-quic-proxy/server.env"
+UNIT_PATH = "usr/lib/systemd/system/tuic-proxy.service"
+ENV_PATH = "etc/tuic-proxy/server.env"
 
 MODE_EXEC = 0o755
 MODE_FILE = 0o644
@@ -151,7 +151,7 @@ def iter_package_files(
     """(archive path, source path, mode), in data.tar order."""
     files: list[tuple[str, str, int]] = []
 
-    for name in ("psk-server", "psk-client"):
+    for name in ("tuic-proxy-server", "tuic-proxy-client"):
         src = os.path.join(bin_dir, name)
         exe = src + ".exe"
         if os.path.isfile(src):
@@ -171,7 +171,7 @@ def iter_package_files(
             )
 
     for src, dst, mode in (
-        (os.path.join(repo, "packaging/debian/psk-quic-proxy.service"), UNIT_PATH, MODE_FILE),
+        (os.path.join(repo, "packaging/debian/tuic-proxy.service"), UNIT_PATH, MODE_FILE),
         (os.path.join(repo, "packaging/debian/server.env"), ENV_PATH, MODE_CONFFILE),
         (os.path.join(repo, "packaging/debian/copyright"), f"{DOC_DIR}/copyright", MODE_FILE),
         (os.path.join(repo, "README.md"), f"{DOC_DIR}/README.md", MODE_FILE),
@@ -359,10 +359,10 @@ def self_test() -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Build the psk-quic-proxy .deb")
+    parser = argparse.ArgumentParser(description="Build the tuic-proxy .deb")
     parser.add_argument("--self-test", action="store_true", help="run only the pure-logic checks")
     parser.add_argument("--repo", default=REPO_ROOT, help="repository root")
-    parser.add_argument("--bin-dir", help="directory holding psk-server / psk-client")
+    parser.add_argument("--bin-dir", help="directory holding tuic-proxy-server / tuic-proxy-client")
     parser.add_argument("--out-dir", default=None, help="output directory (default: <repo>/dist)")
     parser.add_argument("--version", default=None, help="override the Cargo.toml version (CI passes the tag)")
     parser.add_argument("--arch", default="amd64", help="Debian architecture name")

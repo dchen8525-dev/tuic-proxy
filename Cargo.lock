@@ -510,25 +510,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "psk-quic-proxy"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "hkdf",
- "hmac",
- "quinn",
- "rand 0.8.8",
- "rcgen",
- "rustls",
- "sha2",
- "tokio",
- "tokio-util",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "quinn"
 version = "0.11.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1029,6 +1010,25 @@ dependencies = [
  "tracing",
  "tracing-core",
  "tracing-log",
+]
+
+[[package]]
+name = "tuic-proxy"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "hkdf",
+ "hmac",
+ "quinn",
+ "rand 0.8.8",
+ "rcgen",
+ "rustls",
+ "sha2",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

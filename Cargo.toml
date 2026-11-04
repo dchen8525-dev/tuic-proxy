@@ -1,22 +1,22 @@
 [package]
-name = "psk-quic-proxy"
-version = "0.1.0"
+name = "tuic-proxy"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.85"
 description = "QUIC proxy with PSK authentication, SOCKS5 inbound and native stream multiplexing"
 publish = false
 
 [lib]
-name = "psk_quic_proxy"
+name = "tuic_proxy"
 path = "src/lib.rs"
 
 [[bin]]
-name = "psk-server"
-path = "src/bin/psk-server.rs"
+name = "tuic-proxy-server"
+path = "src/bin/tuic-proxy-server.rs"
 
 [[bin]]
-name = "psk-client"
-path = "src/bin/psk-client.rs"
+name = "tuic-proxy-client"
+path = "src/bin/tuic-proxy-client.rs"
 
 [dependencies]
 anyhow = "1"

@@ -29,7 +29,7 @@ pub fn install_crypto_provider() {
 
 /// Build the server-side QUIC configuration with an ephemeral self-signed certificate.
 pub fn server_config(max_streams: u32, idle_timeout: Duration) -> Result<quinn::ServerConfig> {
-    let certified = rcgen::generate_simple_self_signed(vec!["psk-quic-proxy".to_owned()])?;
+    let certified = rcgen::generate_simple_self_signed(vec!["tuic-proxy".to_owned()])?;
     let cert = CertificateDer::from(certified.cert.der().to_vec());
     let key = PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(certified.key_pair.serialize_der()));
 

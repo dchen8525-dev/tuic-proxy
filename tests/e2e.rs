@@ -3,12 +3,12 @@
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 
-use psk_quic_proxy::client::{self, ClientHandle, ClientOptions};
-use psk_quic_proxy::server::{self, ServerHandle, ServerOptions};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
+use tuic_proxy::client::{self, ClientHandle, ClientOptions};
+use tuic_proxy::server::{self, ServerHandle, ServerOptions};
 
 const PSK: &str = "test-psk-0123456789abcdef0123456789abcdef";
 
@@ -91,12 +91,21 @@ async fn socks_connect(
     host: &str,
     port: u16,
 ) -> std::io::Result<(TcpStream, u8)> {
-    let mut tcp = TcpStream::connect(proxy).await?;
-    tcp.set_nodelay(true)?;
+    let mut tcp = TcpStream::connect(proxy)
+        .await
+        .map_err(|e| step("connect", e))?;
+    // Production also treats this as best-effort; Windows can report EINVAL
+    // here under a burst of parallel loopback connects even though the socket
+    // is usable.
+    let _ = tcp.set_nodelay(true);
 
-    tcp.write_all(&[0x05, 0x01, 0x00]).await?;
+    tcp.write_all(&[0x05, 0x01, 0x00])
+        .await
+        .map_err(|e| step("write greeting", e))?;
     let mut selection = [0u8; 2];
-    tcp.read_exact(&mut selection).await?;
+    tcp.read_exact(&mut selection)
+        .await
+        .map_err(|e| step("read method", e))?;
     assert_eq!(selection, [0x05, 0x00]);
 
     let mut request = vec![0x05, 0x01, 0x00];
@@ -116,11 +125,19 @@ async fn socks_connect(
         }
     }
     request.extend_from_slice(&port.to_be_bytes());
-    tcp.write_all(&request).await?;
+    tcp.write_all(&request)
+        .await
+        .map_err(|e| step("write request", e))?;
 
     let mut reply = [0u8; 10];
-    tcp.read_exact(&mut reply).await?;
+    tcp.read_exact(&mut reply)
+        .await
+        .map_err(|e| step("read reply", e))?;
     Ok((tcp, reply[1]))
+}
+
+fn step(what: &str, error: std::io::Error) -> std::io::Error {
+    std::io::Error::new(error.kind(), format!("{what}: {error}"))
 }
 
 async fn expect_echo(proxy: SocketAddr, host: &str, port: u16, payload: &[u8]) {

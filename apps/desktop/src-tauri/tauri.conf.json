@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "PSKProxy",
-  "version": "0.1.0",
-  "identifier": "com.psk.proxy",
+  "productName": "tuic-proxy-gui",
+  "version": "0.2.0",
+  "identifier": "com.tuic.proxy",
   "build": {
     "frontendDist": "../src-ui"
   },
@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "PSK 代理",
+        "title": "TUIC 代理",
         "width": 900,
         "height": 640,
         "minWidth": 720,
@@ -24,9 +24,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": [
-      "app"
-    ],
+    "targets": "all",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -34,12 +32,12 @@
       "icons/icon.ico"
     ],
     "externalBin": [
-      "binaries/psk-client"
+      "binaries/tuic-proxy-client"
     ],
     "resources": [],
     "category": "Utility",
-    "shortDescription": "PSK 代理客户端",
-    "longDescription": "PSK QUIC 代理客户端：本地 SOCKS5 入口，经 PSK 认证的 QUIC 隧道转发。便携版，不安装。"
+    "shortDescription": "TUIC 代理客户端",
+    "longDescription": "TUIC Proxy 客户端：本地 SOCKS5 入口，经 PSK 认证的 QUIC 隧道转发。便携版，不安装。"
   },
-  "mainBinaryName": "PSKProxy"
+  "mainBinaryName": "tuic-proxy-gui"
 }

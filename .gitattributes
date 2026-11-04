@@ -14,3 +14,5 @@ copyright  text eol=lf
 # Binary artifacts
 *.deb      binary
 *.exe      binary
+*.png      binary
+*.ico      binary

@@ -3,13 +3,13 @@ use std::time::Duration;
 
 use anyhow::Result;
 use clap::Parser;
-use psk_quic_proxy::server::{self, ServerOptions};
-use psk_quic_proxy::{DEFAULT_IDLE_TIMEOUT_SECS, DEFAULT_MAX_STREAMS};
 use tracing_subscriber::EnvFilter;
+use tuic_proxy::server::{self, ServerOptions};
+use tuic_proxy::{DEFAULT_IDLE_TIMEOUT_SECS, DEFAULT_MAX_STREAMS};
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "psk-server",
+    name = "tuic-proxy-server",
     version,
     about = "QUIC proxy server with a pre-shared key",
     long_about = None
@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
         .init();
 
     let args = Args::parse();
-    let psk = psk_quic_proxy::cli::read_psk(&args.psk)?;
+    let psk = tuic_proxy::cli::read_psk(&args.psk)?;
     let mut handle = server::start(ServerOptions {
         listen: args.listen,
         psk,
@@ -48,7 +48,7 @@ async fn main() -> Result<()> {
     })
     .await?;
 
-    println!("psk-server listening on {}", handle.addr());
+    println!("tuic-proxy-server listening on {}", handle.addr());
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {},
         _ = handle.wait() => {},
@@ -65,7 +65,7 @@ mod tests {
     #[test]
     fn version_reports_the_binary_name() {
         // Both binaries live in one package, so clap would otherwise fall back
-        // to the package name (psk-quic-proxy).
-        assert_eq!(Args::command().get_name(), "psk-server");
+        // to the package name (tuic-proxy).
+        assert_eq!(Args::command().get_name(), "tuic-proxy-server");
     }
 }

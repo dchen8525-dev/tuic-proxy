@@ -3,7 +3,7 @@
 //! Topology:
 //!
 //! ```text
-//! LAN client --SOCKS5--> psk-client --QUIC/TLS (PSK-authenticated)--> psk-server --> target
+//! LAN client --SOCKS5--> tuic-proxy-client --QUIC/TLS (PSK-authenticated)--> tuic-proxy-server --> target
 //! ```
 //!
 //! Every QUIC connection carries one authenticated control stream and any number
@@ -23,7 +23,7 @@ pub mod tls;
 pub mod tunnel;
 
 /// TLS ALPN protocol identifier.  Both peers must agree on it.
-pub const ALPN: &[u8] = b"psk-quic-proxy/1";
+pub const ALPN: &[u8] = b"tuic-proxy/1";
 
 /// Protocol version carried in the authentication hello.
 pub const VERSION: u8 = 1;

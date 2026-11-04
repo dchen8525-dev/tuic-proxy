@@ -1,12 +1,12 @@
 #!/bin/sh
-# psk-quic-proxy pre-remove: stop the service on remove/purge (not on upgrade).
+# tuic-proxy pre-remove: stop the service on remove/purge (not on upgrade).
 set -e
 
 if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
   if [ -d /run/systemd/system ] && [ -x /bin/systemctl ]; then
-    systemctl --system stop psk-quic-proxy.service >/dev/null 2>&1 || true
+    systemctl --system stop tuic-proxy.service >/dev/null 2>&1 || true
     if [ "$1" = "purge" ]; then
-      systemctl --system disable psk-quic-proxy.service >/dev/null 2>&1 || true
+      systemctl --system disable tuic-proxy.service >/dev/null 2>&1 || true
     fi
   fi
 fi

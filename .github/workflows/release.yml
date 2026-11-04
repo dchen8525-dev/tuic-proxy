@@ -1,10 +1,15 @@
 name: release
 
-# Publishing is tag-driven: `git tag v0.1.0 && git push origin v0.1.0`.
+# Publishing is tag-driven: `git tag v0.2.0 && git push origin v0.2.0`.
 #
-# The workflow builds the .deb on Linux, runs the test suite as a gate, verifies
-# that the package installs and the service starts, and attaches the artifact
-# to a GitHub Release.
+# The workflow builds three portable artifacts and attaches them to a GitHub
+# Release:
+#   * tuic-proxy_<ver>_<arch>.deb                  server + client, systemd unit
+#   * tuic-proxy-gui_<ver>_<arch>.AppImage         Linux GUI, no install
+#   * tuic-proxy-gui-<ver>-windows-x64.exe         Windows GUI, single file
+#
+# The Linux .deb job also runs the test suite and verifies that the package
+# installs and the service starts.
 #
 # Manual runs (workflow_dispatch) only produce artifacts unless `tag` +
 # `publish=true` are given.
@@ -15,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to publish (e.g. v0.1.0). Leave empty to only build artifacts."
+        description: "Release tag to publish (e.g. v0.2.0). Leave empty to only build artifacts."
         required: false
         type: string
       publish:
@@ -59,6 +64,16 @@ jobs:
           print(m.group(1))
           PY
           )"
+          gui_version="$(python3 - <<'PY'
+          import json
+          with open("apps/desktop/src-tauri/tauri.conf.json", encoding="utf-8") as fh:
+              print(json.load(fh)["version"])
+          PY
+          )"
+          if [ "$file_version" != "$gui_version" ]; then
+            echo "::error::tauri.conf.json version is $gui_version but Cargo.toml is $file_version"
+            exit 1
+          fi
 
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             tag="${GITHUB_REF_NAME}"
@@ -137,43 +152,43 @@ jobs:
           sudo dpkg -i "$deb"
 
           echo "== version self-check"
-          psk-server --version | tee /tmp/server.txt
-          grep -qF "psk-server ${version}" /tmp/server.txt
-          psk-client --version | grep -qF "psk-client ${version}"
+          tuic-proxy-server --version | tee /tmp/server.txt
+          grep -qF "tuic-proxy-server ${version}" /tmp/server.txt
+          tuic-proxy-client --version | grep -qF "tuic-proxy-client ${version}"
 
           echo "== installed files"
-          dpkg -L psk-quic-proxy
-          test -x /usr/bin/psk-server
-          test -x /usr/bin/psk-client
-          test -f /etc/psk-quic-proxy/server.env
-          sudo stat -c '%n mode=%a owner=%U:%G' /etc/psk-quic-proxy/server.env
+          dpkg -L tuic-proxy
+          test -x /usr/bin/tuic-proxy-server
+          test -x /usr/bin/tuic-proxy-client
+          test -f /etc/tuic-proxy/server.env
+          sudo stat -c '%n mode=%a owner=%U:%G' /etc/tuic-proxy/server.env
 
           echo "== conffile registration"
-          dpkg-query -W -f='${Conffiles}\n' psk-quic-proxy | tee /tmp/conf.txt
-          grep -q '/etc/psk-quic-proxy/server.env' /tmp/conf.txt
+          dpkg-query -W -f='${Conffiles}\n' tuic-proxy | tee /tmp/conf.txt
+          grep -q '/etc/tuic-proxy/server.env' /tmp/conf.txt
 
           echo "== service start/stop (when systemd is available)"
           state="$(systemctl is-system-running 2>/dev/null || true)"
           if [ "$state" = "running" ] || [ "$state" = "degraded" ]; then
             key="$(openssl rand -hex 32)"
             printf 'PSK_ARGS=--psk %s\n' "$key" \
-              | sudo tee /etc/psk-quic-proxy/server.env >/dev/null
-            sudo chmod 600 /etc/psk-quic-proxy/server.env
-            sudo systemctl start psk-quic-proxy
+              | sudo tee /etc/tuic-proxy/server.env >/dev/null
+            sudo chmod 600 /etc/tuic-proxy/server.env
+            sudo systemctl start tuic-proxy
             sleep 2
-            if ! systemctl is-active --quiet psk-quic-proxy; then
-              sudo journalctl -u psk-quic-proxy --no-pager | tail -40
+            if ! systemctl is-active --quiet tuic-proxy; then
+              sudo journalctl -u tuic-proxy --no-pager | tail -40
               exit 1
             fi
             sudo ss -uln | grep -q ':4433'
-            sudo systemctl stop psk-quic-proxy
+            sudo systemctl stop tuic-proxy
           else
             echo "::notice::systemd is not available here; skipped service start/stop"
           fi
 
           echo "== uninstall"
-          sudo dpkg -r psk-quic-proxy
-          test ! -e /usr/bin/psk-server
+          sudo dpkg -r tuic-proxy
+          test ! -e /usr/bin/tuic-proxy-server
 
       - uses: actions/upload-artifact@v4
         with:
@@ -182,21 +197,135 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  linux-gui:
+    name: Linux GUI (AppImage)
+    needs: prep
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - name: Install Tauri build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential curl wget file libxdo-dev libssl-dev \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+            librsvg2-dev patchelf libfuse2
+
+      - name: Build proxy binaries
+        run: cargo build --release --locked
+
+      - name: Stage sidecar
+        run: sh apps/desktop/scripts/prepare_sidecar.sh target/release
+
+      - name: Install npm dependencies
+        working-directory: apps/desktop
+        run: npm ci --no-audit --no-fund
+
+      - name: Build AppImage
+        working-directory: apps/desktop
+        run: npx tauri build --bundles appimage
+
+      - name: Verify AppImage
+        run: |
+          set -euo pipefail
+          dir=apps/desktop/src-tauri/target/release/bundle/appimage
+          appimage="$(find "$dir" -maxdepth 1 -name '*.AppImage' -print -quit)"
+          test -n "$appimage"
+          chmod +x "$appimage"
+          # --appimage-extract works without FUSE, so this also runs on runners
+          # where /dev/fuse is unavailable.
+          "$appimage" --appimage-extract >/dev/null
+          test -x squashfs-root/usr/bin/tuic-proxy-gui
+          test -x squashfs-root/usr/bin/tuic-proxy-client
+          ./squashfs-root/usr/bin/tuic-proxy-client --version
+          rm -rf squashfs-root
+          mkdir -p dist
+          cp "$appimage" dist/
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-gui
+          path: dist/*.AppImage
+          if-no-files-found: error
+          retention-days: 14
+
+  windows-gui:
+    name: Windows GUI (portable)
+    needs: prep
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - name: Build proxy binaries
+        run: cargo build --release --locked
+
+      - name: Install npm dependencies
+        working-directory: apps/desktop
+        run: npm ci --no-audit --no-fund
+
+      - name: Build portable GUI
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -ExecutionPolicy Bypass `
+            -File apps/desktop/scripts/build_windows.ps1 `
+            -ClientBin target/release/tuic-proxy-client.exe `
+            -Version "${{ needs.prep.outputs.version }}" `
+            -OutDir dist
+
+      - name: Verify portable GUI
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem dist -Filter *.exe | Select-Object -First 1
+          if (!$exe) { throw "portable exe missing" }
+          & $exe.FullName --tuic-proxy-launcher-selftest
+          if ($LASTEXITCODE -ne 0) { throw "launcher selftest failed ($LASTEXITCODE)" }
+          $report = Join-Path $env:LOCALAPPDATA "TUICProxy\tuic-proxy-launcher-selftest.txt"
+          if (!(Test-Path $report)) { throw "selftest report missing: $report" }
+          Get-Content $report
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-gui
+          path: dist/*.exe
+          if-no-files-found: error
+          retention-days: 14
+
   publish:
     name: Publish GitHub Release
-    needs: [prep, linux-deb]
+    needs: [prep, linux-deb, linux-gui, windows-gui]
     if: needs.prep.outputs.publish == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: dist
+          merge-multiple: true
 
       - name: Collect artifacts and checksums
         run: |
           set -euo pipefail
           mkdir -p release
-          find dist -type f -name '*.deb' -exec cp {} release/ \;
+          find dist -type f \( -name '*.deb' -o -name '*.AppImage' -o -name '*.exe' \) \
+            -exec cp {} release/ \;
+          test -n "$(ls -A release)"
           ls -l release/
           (cd release && sha256sum * > SHA256SUMS && cat SHA256SUMS)
 
@@ -210,6 +339,6 @@ jobs:
           set -euo pipefail
           gh release create "$TAG" \
             --repo "$GH_REPO" \
-            --title "psk-quic-proxy $VERSION" \
+            --title "tuic-proxy $VERSION" \
             --generate-notes \
             release/*

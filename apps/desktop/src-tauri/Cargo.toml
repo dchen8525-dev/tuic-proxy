@@ -1,8 +1,8 @@
 [package]
-name = "psk-desktop"
-version = "0.1.0"
+name = "tuic-proxy-desktop"
+version = "0.2.0"
 edition = "2021"
-description = "PSK QUIC 代理客户端（Tauri 2 壳；代理由 psk-client sidecar 承载）"
+description = "PSK QUIC 代理客户端（Tauri 2 壳；代理由 tuic-proxy-client sidecar 承载）"
 license = "MIT"
 
 [build-dependencies]
@@ -12,6 +12,10 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+# Used by the Unix child-process shutdown path (SIGTERM before SIGKILL).
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [profile.release]
 lto = true
